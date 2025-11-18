@@ -1,0 +1,30 @@
+services:
+  # Auth Service
+  auth-service:
+    build: 
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "5001:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=auth-db;Database=auth_db;Username=postgres;Password=123
+    depends_on:
+      - auth-db
+
+  # Auth Database
+  auth-db:
+    image: postgres:14
+    container_name: auth-db
+    environment:
+      - POSTGRES_DB=auth_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+
+volumes:
+  auth_data:
