@@ -48,14 +48,13 @@ namespace AuthService.Migrations
                     b.Property<int>("RoleType")
                         .HasColumnType("integer");
 
-                    b.HasKey("Id")
-                        .HasName("pk_roles");
+                    b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
-                        .HasDatabaseName("RoleNameIndex");
+                        .HasDatabaseName("ix_roles_name");
 
-                    b.ToTable("AspNetRoles", (string)null);
+                    b.ToTable("roles", (string)null);
 
                     b.HasData(
                         new
@@ -164,25 +163,24 @@ namespace AuthService.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.HasKey("Id")
-                        .HasName("pk_users");
+                    b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
+                        .HasDatabaseName("ix_users_email");
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex");
+                        .HasDatabaseName("ix_users_username");
 
-                    b.ToTable("AspNetUsers", (string)null);
+                    b.ToTable("users", (string)null);
 
                     b.HasData(
                         new
                         {
                             Id = 1,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "dd0a5a24-86d6-45d8-a783-9caec4f4befb",
-                            CreatedAt = new DateTime(2025, 11, 18, 18, 13, 23, 969, DateTimeKind.Utc).AddTicks(506),
+                            ConcurrencyStamp = "6d53b80d-9ff7-4b92-badd-2373fc078f37",
+                            CreatedAt = new DateTime(2025, 11, 18, 18, 55, 19, 570, DateTimeKind.Utc).AddTicks(928),
                             Email = "admin@mes.com",
                             EmailConfirmed = true,
                             FirstName = "Admin",
@@ -191,9 +189,9 @@ namespace AuthService.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "ADMIN@MES.COM",
                             NormalizedUserName = "ADMIN@MES.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAEAn3uKJ3gK/J5QN9q3FIirUe1eAUMhVuirI5AhzQGKjmRPXH1Geg0C7SrzVohY+K6Q==",
+                            PasswordHash = "AQAAAAIAAYagAAAAENd+BrAfFUDuPXyD2D1/gPwss7BAiCxENKq8xaXuER3Xt83U6rYSMup4qap+fOaOEA==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "15fd1cb1-3776-4432-b832-2eb3cc7fc632",
+                            SecurityStamp = "52664299-7277-4bd8-96d9-b4944a7bf9a1",
                             TwoFactorEnabled = false,
                             UserName = "admin@mes.com"
                         },
@@ -201,8 +199,8 @@ namespace AuthService.Migrations
                         {
                             Id = 2,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "22edc785-6b37-4672-bb5d-e6a8cfe10d17",
-                            CreatedAt = new DateTime(2025, 11, 18, 18, 13, 24, 11, DateTimeKind.Utc).AddTicks(4924),
+                            ConcurrencyStamp = "cef96aa4-f2af-435b-b841-d9983f96801e",
+                            CreatedAt = new DateTime(2025, 11, 18, 18, 55, 19, 612, DateTimeKind.Utc).AddTicks(6336),
                             Email = "operator@mes.com",
                             EmailConfirmed = true,
                             FirstName = "John",
@@ -211,9 +209,9 @@ namespace AuthService.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "OPERATOR@MES.COM",
                             NormalizedUserName = "OPERATOR@MES.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAENC1IO8xCkd6HW+cNCf7OrpEgGEN+g0wLBy/JkcY9br2p4VZKvIf46A0kSkcWRAgsA==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEO46u2di+IKwpHQA4RqSUSP5Eybeqcc0T6++X0+Ht3cgDXYxfjLsX/w/RDKbS0Q76g==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "cf6b1209-a748-4b05-9ae0-350ba1f01906",
+                            SecurityStamp = "a90baf1c-af67-49ba-80d9-8e85b114521f",
                             TwoFactorEnabled = false,
                             UserName = "operator@mes.com"
                         },
@@ -221,8 +219,8 @@ namespace AuthService.Migrations
                         {
                             Id = 3,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "d28bfb48-74bb-4d93-ac01-2ed8fc0748a4",
-                            CreatedAt = new DateTime(2025, 11, 18, 18, 13, 24, 54, DateTimeKind.Utc).AddTicks(2166),
+                            ConcurrencyStamp = "69905db3-5e57-45b3-ba8a-fa489b57cac8",
+                            CreatedAt = new DateTime(2025, 11, 18, 18, 55, 19, 655, DateTimeKind.Utc).AddTicks(8476),
                             Email = "tech@mes.com",
                             EmailConfirmed = true,
                             FirstName = "Anna",
@@ -231,9 +229,9 @@ namespace AuthService.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "TECH@MES.COM",
                             NormalizedUserName = "TECH@MES.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAEIxMkbcQAmL3SRT1N25ci3yLUP/Mztxn/s8IGWp1ZAlsTPFYdPo92PRKhglAbvzQPg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEPtNW+OfXtuDTR4WStgpKXqP+5cvN2m0WQmVifeDNimmLZssQ5vDvVTUejJdVlNtRQ==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "e2133dd9-7e2c-45a0-81b6-82689c02a658",
+                            SecurityStamp = "5363082a-73c3-4dc0-8d36-f200b9f3c876",
                             TwoFactorEnabled = false,
                             UserName = "tech@mes.com"
                         },
@@ -241,8 +239,8 @@ namespace AuthService.Migrations
                         {
                             Id = 4,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "942a1320-fdd4-4d63-989b-8c6c55ecbdf2",
-                            CreatedAt = new DateTime(2025, 11, 18, 18, 13, 24, 97, DateTimeKind.Utc).AddTicks(228),
+                            ConcurrencyStamp = "06cfb7bd-90d9-4dbb-b70d-4b2e409a6312",
+                            CreatedAt = new DateTime(2025, 11, 18, 18, 55, 19, 698, DateTimeKind.Utc).AddTicks(7854),
                             Email = "manager@mes.com",
                             EmailConfirmed = true,
                             FirstName = "Michael",
@@ -251,83 +249,12 @@ namespace AuthService.Migrations
                             LockoutEnabled = false,
                             NormalizedEmail = "MANAGER@MES.COM",
                             NormalizedUserName = "MANAGER@MES.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAECZaF2iau89Yb45HSCG/z1rUuBtnrrsGSqWp5EEZVZ1ea//Qz4Kfg10VMG/8RZzEmw==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEKQR/+fDxltC8Ys5+X6Vj3g0NVFHXQFx3+ApnNN5eXFTgD0QE2TVUFJ5gjXsJ9m8Lg==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "1f354e57-b702-4a50-abdb-e51d7cb1f618",
+                            SecurityStamp = "2173343a-b6b5-41ba-87f5-d1a0a53d29d7",
                             TwoFactorEnabled = false,
                             UserName = "manager@mes.com"
                         });
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("text");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id")
-                        .HasName("pk_roleclaims");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("AspNetRoleClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id")
-                        .HasName("pk_userclaims");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
-                {
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProviderKey")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("LoginProvider", "ProviderKey");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserLogins", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
@@ -342,7 +269,7 @@ namespace AuthService.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("AspNetUserRoles", (string)null);
+                    b.ToTable("user_roles", (string)null);
 
                     b.HasData(
                         new
@@ -367,52 +294,6 @@ namespace AuthService.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("text");
-
-                    b.HasKey("UserId", "LoginProvider", "Name");
-
-                    b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
-                {
-                    b.HasOne("AuthService.Entities.Role", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
-                {
-                    b.HasOne("AuthService.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
-                {
-                    b.HasOne("AuthService.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
                 {
                     b.HasOne("AuthService.Entities.Role", null)
@@ -421,15 +302,6 @@ namespace AuthService.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AuthService.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
-                {
                     b.HasOne("AuthService.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")

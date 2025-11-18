@@ -11,33 +11,32 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // ТОЛЬКО убираем кавычки из имен таблиц, но не меняем названия колонок
-        foreach (var entity in modelBuilder.Model.GetEntityTypes())
-        {
-            // Убираем кавычки из имени таблицы и префикс aspnet
-            var tableName = entity.GetTableName()?.ToLower().Replace("aspnet", "");
-            entity.SetTableName(tableName);
-
-            // Убираем кавычки только из имен индексов и ключей
-            foreach (var key in entity.GetKeys())
-            {
-                key.SetName(key.GetName()?.ToLower());
-            }
-
-            foreach (var foreignKey in entity.GetForeignKeys())
-            {
-                foreignKey.SetConstraintName(foreignKey.GetConstraintName()?.ToLower());
-            }
-
-            foreach (var index in entity.GetIndexes())
-            {
-                index.SetDatabaseName(index.GetDatabaseName()?.ToLower());
-            }
-        }
-
         base.OnModelCreating(modelBuilder);
 
-        // Создание ролей с использованием твоего класса Role
+        // Переименовываем таблицы
+        modelBuilder.Entity<User>().ToTable("users");
+        modelBuilder.Entity<Role>().ToTable("roles");
+        modelBuilder.Entity<IdentityUserRole<int>>().ToTable("user_roles");
+
+        // Переименовываем индексы чтобы избежать конфликтов
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasIndex(u => u.NormalizedUserName).HasDatabaseName("ix_users_username");
+            entity.HasIndex(u => u.NormalizedEmail).HasDatabaseName("ix_users_email");
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasIndex(r => r.NormalizedName).HasDatabaseName("ix_roles_name");
+        });
+
+        // УДАЛЯЕМ лишние таблицы
+        modelBuilder.Ignore<IdentityUserClaim<int>>();
+        modelBuilder.Ignore<IdentityUserLogin<int>>();
+        modelBuilder.Ignore<IdentityUserToken<int>>();
+        modelBuilder.Ignore<IdentityRoleClaim<int>>();
+
+        // Остальной код создания данных...
         modelBuilder.Entity<Role>().HasData(
             new Role(UserRole.Operator) { Id = 1, NormalizedName = "OPERATOR" },
             new Role(UserRole.Technologist) { Id = 2, NormalizedName = "TECHNOLOGIST" },
@@ -103,10 +102,7 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
         };
         managerUser.PasswordHash = hasher.HashPassword(managerUser, "Manager123!");
 
-        // Сохраняем пользователей в БД
         modelBuilder.Entity<User>().HasData(adminUser, operatorUser, technologistUser, managerUser);
-
-        // Назначение ролей пользователям
         modelBuilder.Entity<IdentityUserRole<int>>().HasData(
             new IdentityUserRole<int> { UserId = 1, RoleId = 4 }, // Admin
             new IdentityUserRole<int> { UserId = 2, RoleId = 1 }, // Operator
