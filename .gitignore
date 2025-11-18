@@ -39,3 +39,49 @@ packages/
 publish/
 *.appsettings.json
 appsettings.json
+
+# AppSettings
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+appsettings.private.json
+appsettings.Secrets.json
+appsettings.[Uu]ser.json
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.db
+*.db-shm
+*.db-wal
+
+# Docker
+docker-compose.override.yml
+*.dockerignore
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# NuGet
+packages/
+.nuget/
+*.nupkg
+
+# Runtime data
+publish/
+
+# Visual Studio
+*.vsidx
+*.vssscc
