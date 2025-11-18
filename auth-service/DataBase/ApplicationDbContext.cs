@@ -11,31 +11,24 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Убираем кавычки для всех таблиц
+        // ТОЛЬКО убираем кавычки из имен таблиц, но не меняем названия колонок
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
         {
-            // Убираем кавычки из имени таблицы
-            entity.SetTableName(entity.GetTableName()?.ToLower());
+            // Убираем кавычки из имени таблицы и префикс aspnet
+            var tableName = entity.GetTableName()?.ToLower().Replace("aspnet", "");
+            entity.SetTableName(tableName);
 
-            // Убираем кавычки из имен колонок  
-            foreach (var property in entity.GetProperties())
-            {
-                property.SetColumnName(property.GetColumnName()?.ToLower());
-            }
-
-            // Убираем кавычки из первичных ключей
+            // Убираем кавычки только из имен индексов и ключей
             foreach (var key in entity.GetKeys())
             {
                 key.SetName(key.GetName()?.ToLower());
             }
 
-            // Убираем кавычки из внешних ключей
             foreach (var foreignKey in entity.GetForeignKeys())
             {
                 foreignKey.SetConstraintName(foreignKey.GetConstraintName()?.ToLower());
             }
 
-            // Убираем кавычки из индексов
             foreach (var index in entity.GetIndexes())
             {
                 index.SetDatabaseName(index.GetDatabaseName()?.ToLower());
@@ -44,13 +37,15 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
 
         base.OnModelCreating(modelBuilder);
 
-        // Создание ролей на основе твоего enum (теперь без кавычек)
-        modelBuilder.Entity<IdentityRole>().HasData(
-            new IdentityRole { Id = "1", Name = UserRole.Operator.ToString(), NormalizedName = "OPERATOR" },
-            new IdentityRole { Id = "2", Name = UserRole.Technologist.ToString(), NormalizedName = "TECHNOLOGIST" },
-            new IdentityRole { Id = "3", Name = UserRole.Manager.ToString(), NormalizedName = "MANAGER" },
-            new IdentityRole { Id = "4", Name = UserRole.Admin.ToString(), NormalizedName = "ADMIN" }
+        // Создание ролей с использованием твоего класса Role
+        modelBuilder.Entity<Role>().HasData(
+            new Role(UserRole.Operator) { Id = 1, NormalizedName = "OPERATOR" },
+            new Role(UserRole.Technologist) { Id = 2, NormalizedName = "TECHNOLOGIST" },
+            new Role(UserRole.Manager) { Id = 3, NormalizedName = "MANAGER" },
+            new Role(UserRole.Admin) { Id = 4, NormalizedName = "ADMIN" }
         );
+
+        var hasher = new PasswordHasher<User>();
 
         var adminUser = new User
         {
@@ -64,8 +59,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
             FirstName = "Admin",
             LastName = "System"
         };
+        adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin123!");
 
-        // Создание оператора  
         var operatorUser = new User
         {
             Id = 2,
@@ -78,8 +73,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
             FirstName = "John",
             LastName = "Operator"
         };
+        operatorUser.PasswordHash = hasher.HashPassword(operatorUser, "Operator123!");
 
-        // Создание технолога
         var technologistUser = new User
         {
             Id = 3,
@@ -92,8 +87,8 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
             FirstName = "Anna",
             LastName = "Technologist"
         };
+        technologistUser.PasswordHash = hasher.HashPassword(technologistUser, "Tech123!");
 
-        // Создание менеджера
         var managerUser = new User
         {
             Id = 4,
@@ -106,6 +101,17 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, int>
             FirstName = "Michael",
             LastName = "Manager"
         };
-    }
+        managerUser.PasswordHash = hasher.HashPassword(managerUser, "Manager123!");
 
+        // Сохраняем пользователей в БД
+        modelBuilder.Entity<User>().HasData(adminUser, operatorUser, technologistUser, managerUser);
+
+        // Назначение ролей пользователям
+        modelBuilder.Entity<IdentityUserRole<int>>().HasData(
+            new IdentityUserRole<int> { UserId = 1, RoleId = 4 }, // Admin
+            new IdentityUserRole<int> { UserId = 2, RoleId = 1 }, // Operator
+            new IdentityUserRole<int> { UserId = 3, RoleId = 2 }, // Technologist
+            new IdentityUserRole<int> { UserId = 4, RoleId = 3 }  // Manager
+        );
+    }
 }
