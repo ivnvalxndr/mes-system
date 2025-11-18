@@ -85,3 +85,57 @@ publish/
 # Visual Studio
 *.vsidx
 *.vssscc
+
+# Auth Service
+auth-service/bin/
+auth-service/obj/
+auth-service/appsettings.Development.json
+auth-service/appsettings.Production.json
+auth-service/appsettings.Local.json
+auth-service/appsettings.[Uu]ser.json
+
+# Docker
+docker-compose.override.yml
+*.dockerignore
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+**/*.log
+logs/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# NuGet
+**/packages/
+.nuget/
+*.nupkg
+
+# Runtime data
+**/publish/
+
+# Visual Studio
+**/.vs/
+**/*.vsidx
+**/*.vssscc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Migrations (если хочешь хранить в репе - закомментируй)
+# **/Migrations/
