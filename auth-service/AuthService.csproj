@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <Folder Include="DataBase\" />
-    <Folder Include="DTOs\" />
   </ItemGroup>
 
 </Project>

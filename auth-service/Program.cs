@@ -51,20 +51,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Identity
-builder.Services.AddIdentityCore<User>(options =>
+builder.Services.AddIdentity<User, Role>(options =>
     {
-        // Минимальные требования для разработки
         options.Password.RequireDigit = false;
         options.Password.RequireLowercase = false;
         options.Password.RequireNonAlphanumeric = false;
         options.Password.RequireUppercase = false;
         options.Password.RequiredLength = 3;
-
-        // Отключаем лишние функции
         options.Lockout.AllowedForNewUsers = false;
         options.User.RequireUniqueEmail = true;
     })
-    .AddRoles<Role>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 

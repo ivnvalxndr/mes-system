@@ -1,9 +1,7 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using AuthService.Entities;
+﻿using AuthService.Entities;
 using AuthService.Services;
-
-namespace AuthService.Controllers;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -30,7 +28,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginDTO request)
     {
         try
         {
@@ -49,17 +47,23 @@ public class AuthController : ControllerBase
             var roles = await _userManager.GetRolesAsync(user);
             var token = _tokenService.GenerateToken(user, roles);
 
+            // Обновляем LastLogin
+            user.LastLogin = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
             _logger.LogInformation("User {Email} logged in successfully", request.Email);
 
             return Ok(new
             {
                 Token = token,
-                User = new
+                User = new UserResponseDTO
                 {
-                    user.Id,
-                    user.Email,
-                    user.UserName,
-                    Roles = roles
+                    Id = user.Id,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Role = Enum.Parse<UserRole>(roles.First()),
+                    LastLogin = user.LastLogin
                 }
             });
         }
@@ -71,7 +75,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    public async Task<IActionResult> Register([FromBody] RegisterDTO request)
     {
         try
         {
@@ -86,7 +90,8 @@ public class AuthController : ControllerBase
                 UserName = request.Email,
                 Email = request.Email,
                 FirstName = request.FirstName,
-                LastName = request.LastName
+                LastName = request.LastName,
+                LastLogin = DateTime.UtcNow
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -95,12 +100,17 @@ public class AuthController : ControllerBase
                 return BadRequest(result.Errors);
             }
 
-            // Назначаем роль по умолчанию (Operator)
-            await _userManager.AddToRoleAsync(user, UserRole.Operator.ToString());
+            // Назначаем роль из DTO (по умолчанию Operator если не указана)
+            var role = request.Role == 0 ? UserRole.Operator : request.Role;
+            await _userManager.AddToRoleAsync(user, role.ToString());
 
             _logger.LogInformation("User {Email} registered successfully", request.Email);
 
-            return Ok(new { Message = "User created successfully" });
+            return Ok(new
+            {
+                Message = "User created successfully",
+                UserId = user.Id
+            });
         }
         catch (Exception ex)
         {
@@ -108,48 +118,4 @@ public class AuthController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
-
-    [HttpGet("me")]
-    public async Task<IActionResult> GetCurrentUser()
-    {
-        try
-        {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return Unauthorized();
-            }
-
-            var roles = await _userManager.GetRolesAsync(user);
-
-            return Ok(new
-            {
-                user.Id,
-                user.Email,
-                user.UserName,
-                user.FirstName,
-                user.LastName,
-                Roles = roles
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting current user");
-            return StatusCode(500, "Internal server error");
-        }
-    }
-}
-
-public class LoginRequest
-{
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
-
-public class RegisterRequest
-{
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
 }
