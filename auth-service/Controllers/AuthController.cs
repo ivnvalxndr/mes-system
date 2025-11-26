@@ -131,4 +131,30 @@ public class AuthController : ControllerBase
 
         return Ok(new { user.Id, user.Email, user.FirstName, user.LastName, Role = roles.First() });
     }
+
+    [HttpPost("logout")]
+    [Authorize] 
+    public async Task<IActionResult> Logout()
+    {
+        try
+        {
+            // Получаем ID текущего пользователя из токена
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                // Можно добавить логирование выхода
+                _logger.LogInformation("User {UserId} logged out", userId);
+            }
+
+            // В JWT нет состояния, поэтому просто возвращаем успех
+            // На фронтенде нужно удалить токен из localStorage
+            return Ok(new { Message = "Logged out successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during logout");
+            return StatusCode(500, "Internal server error");
+        }
+    }
 }
