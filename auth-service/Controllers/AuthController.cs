@@ -1,5 +1,7 @@
-﻿using AuthService.Entities;
+﻿using System.Security.Claims;
+using AuthService.Entities;
 using AuthService.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -117,5 +119,16 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Error during registration for {Email}", request.Email);
             return StatusCode(500, "Internal server error");
         }
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> GetCurrentUser()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var user = await _userManager.FindByIdAsync(userId);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return Ok(new { user.Id, user.Email, user.FirstName, user.LastName, Role = roles.First() });
     }
 }

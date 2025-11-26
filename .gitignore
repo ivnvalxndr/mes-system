@@ -139,3 +139,7 @@ Thumbs.db
 
 # Migrations (если хочешь хранить в репе - закомментируй)
 # **/Migrations/
+
+**/appsettings.json
+**/appsettings.*.json
+**/appsettings.*.json
