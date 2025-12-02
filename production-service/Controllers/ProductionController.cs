@@ -61,7 +61,6 @@ namespace ProductionService.Controllers
             });
         }
 
-        // GET /api/production/orders
         [HttpGet("orders")]
         public async Task<IActionResult> GetOrders()
         {
@@ -90,7 +89,6 @@ namespace ProductionService.Controllers
             return Ok(response);
         }
 
-        // GET /api/production/orders/{id}
         [HttpGet("orders/{id}")]
         public async Task<IActionResult> GetOrder(int id)
         {
@@ -118,7 +116,6 @@ namespace ProductionService.Controllers
             });
         }
 
-        // PUT /api/production/orders/{id}/status
         [HttpPut("orders/{id}/status")]
         public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] OrderStatus status)
         {
