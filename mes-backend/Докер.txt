@@ -1,0 +1,53 @@
+docker-compose up --build auth-service auth-db
+
+docker exec auth-service dotnet ef database update -- апдейт миграций и докера
+
+
+docker-compose down -v --rmi all -- сброс
+docker-compose up -d --build	 -- сборка
+
+# 1. Останови всё
+docker-compose down
+
+# 2. Запусти PostgreSQL
+docker-compose up -d postgres-db
+
+# 3. Подожди 10 секунд
+timeout /t 10
+
+# 4. Создай БД
+docker exec mes-postgres psql -U postgres -c "CREATE DATABASE auth_db;"
+docker exec mes-postgres psql -U postgres -c "CREATE DATABASE production_db;"
+docker exec mes-postgres psql -U postgres -c "CREATE DATABASE material_db;"
+docker exec mes-postgres psql -U postgres -c "CREATE DATABASE unit_db;"
+
+# 5. Запусти всё
+docker-compose up -d
+
+# 6. Проверь
+docker-compose ps
+
+----
+Write-Host "=== Очистка Docker контейнеров ===" -ForegroundColor Red
+
+Write-Host "1. Удаляю контейнер units-service..." -ForegroundColor Yellow
+docker rm -f units-service 2>$null
+
+Write-Host "2. Удаляю другие возможные конфликты..." -ForegroundColor Yellow
+docker rm -f materials-service 2>$null
+docker rm -f reports-service 2>$null
+docker rm -f production-service 2>$null
+docker rm -f auth-service 2>$null
+docker rm -f mes-postgres 2>$null
+
+Write-Host "3. Останавливаю docker-compose..." -ForegroundColor Yellow
+docker-compose down 2>$null
+
+Write-Host "4. Очищаю неиспользуемые контейнеры..." -ForegroundColor Yellow
+docker container prune -f
+
+Write-Host "5. Запускаю заново..." -ForegroundColor Green
+docker-compose up -d
+
+Write-Host "`n=== Готово! ===" -ForegroundColor Green
+docker-compose ps

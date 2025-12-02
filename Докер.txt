@@ -1,7 +1,0 @@
-docker-compose up --build auth-service auth-db
-
-docker exec auth-service dotnet ef database update -- апдейт миграций и докера
-
-
-docker-compose down -v --rmi all -- сброс
-docker-compose up -d --build	 -- сборка

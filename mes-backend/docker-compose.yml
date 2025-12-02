@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL для всех БД
   postgres-db:
@@ -8,19 +6,13 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123
-      POSTGRES_DB: postgres  # временная БД для init скрипта
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     networks:
       - mes-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    restart: unless-stopped
 
   # Auth Service
   auth-service:
@@ -39,8 +31,7 @@ services:
       Jwt__Audience: "mes-client"
       Jwt__ExpireHours: "24"
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      - postgres-db
     networks:
       - mes-network
     restart: unless-stopped
@@ -57,8 +48,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: "Host=mes-postgres;Port=5432;Database=production_db;Username=postgres;Password=123"
-      Jwt__Issuer: "mes-system"
-      Jwt__Audience: "mes-client"
+      Jwt__Issuer: mes-system
+      Jwt__Audience: mes-client
     depends_on:
       - postgres-db
       - auth-service
@@ -66,20 +57,20 @@ services:
       - mes-network
     restart: unless-stopped
 
-  # Material Service
-  material-service:
+  # Material Service (с s!)
+  materials-service:
     build: 
       context: ./materials-service
       dockerfile: Dockerfile
-    container_name: materials-service
+    container_name: materials-service  # ← с s!
     ports:
       - "5002:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: "Host=mes-postgres;Port=5432;Database=material_db;Username=postgres;Password=123"
-      Jwt__Issuer: "mes-system"
-      Jwt__Audience: "mes-client"
+      Jwt__Issuer: mes-system
+      Jwt__Audience: mes-client
     depends_on:
       - postgres-db
       - auth-service
@@ -87,20 +78,20 @@ services:
       - mes-network
     restart: unless-stopped
 
-  # Unit Service
-  unit-service:
+  # Unit Service (с s!)
+  units-service:
     build: 
       context: ./units-service
       dockerfile: Dockerfile
-    container_name: units-service
+    container_name: units-service  # ← с s!
     ports:
       - "5003:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: "Host=mes-postgres;Port=5432;Database=unit_db;Username=postgres;Password=123"
-      Jwt__Issuer: "mes-system"
-      Jwt__Audience: "mes-client"
+      Jwt__Issuer: mes-system
+      Jwt__Audience: mes-client
     depends_on:
       - postgres-db
       - auth-service
@@ -108,27 +99,27 @@ services:
       - mes-network
     restart: unless-stopped
 
-  # Report Service 
-  report-service:
+  # Report Service (с s!)
+  reports-service:
     build: 
       context: ./reports-service 
       dockerfile: Dockerfile
-    container_name: report-service
+    container_name: reports-service  # ← с s!
     ports:
       - "5004:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
-      - Jwt__Issuer=mes-system
-      - Jwt__Audience=mes-client
-      - Services__ProductionService=http://production-service:8080
-      - Services__MaterialService=http://material-service:8080
-      - Services__UnitService=http://unit-service:8080
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Jwt__Issuer: mes-system
+      Jwt__Audience: mes-client
+      Services__ProductionService: "http://production-service:8080"
+      Services__MaterialService: "http://materials-service:8080"  # ← с s!
+      Services__UnitService: "http://units-service:8080"  # ← с s!
     depends_on:
       - auth-service
       - production-service
-      - material-service
-      - unit-service
+      - materials-service  
+      - units-service  
     networks:
       - mes-network
     restart: unless-stopped
