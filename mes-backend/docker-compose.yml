@@ -2,7 +2,7 @@ services:
   # PostgreSQL для всех БД
   postgres-db:
     image: postgres:14
-    container_name: mes-postgres
+    container_name: mes-backend-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123
@@ -120,6 +120,26 @@ services:
       - production-service
       - materials-service  
       - units-service  
+    networks:
+      - mes-network
+    restart: unless-stopped
+    
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:80"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+    depends_on:
+      - auth-service
+      - production-service
+      - materials-service
+      - units-service
+      - reports-service
     networks:
       - mes-network
     restart: unless-stopped
