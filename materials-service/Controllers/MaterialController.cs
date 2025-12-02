@@ -1,12 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using MaterialService.Data;
-using MaterialService.Entities;
-using MaterialService.Entities.Enums;
-using MaterialService.DTO;
 using materials_service.Data;
 using materials_service.DTO;
 using materials_service.Entities;
+using materials_service.Entities.Enums;
 
 namespace MaterialService.Controllers
 {
@@ -66,7 +63,7 @@ namespace MaterialService.Controllers
                 Quantity = request.Quantity,
                 MinQuantity = request.MinQuantity,
                 MaxQuantity = request.MaxQuantity,
-                Status = MaterialStatus.ВПоступлении,
+                Status = MaterialStatus.PendingReceipt, // ← ИЗМЕНИЛ
                 StorageLocation = request.StorageLocation,
                 BatchNumber = request.BatchNumber,
                 ExpiryDate = request.ExpiryDate,
@@ -80,8 +77,8 @@ namespace MaterialService.Controllers
             var routeStep = new MaterialRouteStep
             {
                 MaterialId = material.Id,
-                StepType = RouteStepType.Поступление,
-                FromLocation = "Поставщик",
+                StepType = RouteStepType.Receipt, // ← ИЗМЕНИЛ
+                FromLocation = "Supplier", // ← ИЗМЕНИЛ
                 ToLocation = material.StorageLocation,
                 Quantity = material.Quantity,
                 CreatedBy = material.CreatedBy
@@ -159,17 +156,17 @@ namespace MaterialService.Controllers
             // Обновляем статус материала в зависимости от типа шага
             material.Status = request.StepType switch
             {
-                RouteStepType.Поступление => MaterialStatus.ВПоступлении,
-                RouteStepType.Перемещение => MaterialStatus.НаСкладе,
-                RouteStepType.Резервирование => MaterialStatus.Зарезервирован,
-                RouteStepType.Использование => MaterialStatus.ВПроизводстве,
-                RouteStepType.Списание => MaterialStatus.Списан,
+                RouteStepType.Receipt => MaterialStatus.PendingReceipt, // ← ИЗМЕНИЛ
+                RouteStepType.Transfer => MaterialStatus.InStock, // ← ИЗМЕНИЛ
+                RouteStepType.Reservation => MaterialStatus.Reserved, // ← ИЗМЕНИЛ
+                RouteStepType.Usage => MaterialStatus.InProduction, // ← ИЗМЕНИЛ
+                RouteStepType.WriteOff => MaterialStatus.WrittenOff, // ← ИЗМЕНИЛ
                 _ => material.Status
             };
 
             // Обновляем количество материала
-            if (request.StepType == RouteStepType.Использование ||
-                request.StepType == RouteStepType.Списание)
+            if (request.StepType == RouteStepType.Usage ||
+                request.StepType == RouteStepType.WriteOff)
             {
                 material.Quantity -= request.Quantity;
             }

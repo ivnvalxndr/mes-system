@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using materials_service.Entities.Enums;
 
 namespace materials_service.Entities;
 
@@ -27,7 +28,7 @@ public class Material
     public decimal MinQuantity { get; set; }
     public decimal MaxQuantity { get; set; }
 
-    public MaterialStatus Status { get; set; } = MaterialStatus.ВПоступлении;
+    public MaterialStatus Status { get; set; } = MaterialStatus.PendingReceipt;
 
     public string StorageLocation { get; set; } = string.Empty;
     public string BatchNumber { get; set; } = string.Empty;

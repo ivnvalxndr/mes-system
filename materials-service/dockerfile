@@ -5,15 +5,15 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["MaterialService.csproj", "./"]
-RUN dotnet restore "MaterialService.csproj"
+COPY ["materials-service.csproj", "./"]
+RUN dotnet restore "materials-service.csproj"
 COPY . .
-RUN dotnet build "MaterialService.csproj" -c Release -o /app/build
+RUN dotnet build "materials-service.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "MaterialService.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "materials-service.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "MaterialService.dll"]
+ENTRYPOINT ["dotnet", "materials-service.dll"]

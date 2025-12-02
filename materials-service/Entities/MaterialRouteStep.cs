@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using materials_service.Entities.Enums;
 
 namespace materials_service.Entities;
 

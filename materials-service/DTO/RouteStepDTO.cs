@@ -1,4 +1,6 @@
-﻿namespace materials_service.DTO;
+﻿using materials_service.Entities.Enums;
+
+namespace materials_service.DTO;
 
 public class RouteStepDTO
 {

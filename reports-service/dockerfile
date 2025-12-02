@@ -5,15 +5,15 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["ReportService.csproj", "./"]
-RUN dotnet restore "ReportService.csproj"
+COPY ["reports-service.csproj", "./"]  
+RUN dotnet restore "reports-service.csproj"  
 COPY . .
-RUN dotnet build "ReportService.csproj" -c Release -o /app/build
+RUN dotnet build "reports-service.csproj" -c Release -o /app/build  
 
 FROM build AS publish
-RUN dotnet publish "ReportService.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "reports-service.csproj" -c Release -o /app/publish /p:UseAppHost=false  
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "ReportService.dll"]
+ENTRYPOINT ["dotnet", "reports-service.dll"]  

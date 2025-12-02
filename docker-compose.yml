@@ -22,7 +22,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Auth Service (ВАЖНО: первый!)
+  # Auth Service
   auth-service:
     build: 
       context: ./auth-service
@@ -48,7 +48,7 @@ services:
   # Production Service
   production-service:
     build: 
-      context: ./ProductionService
+      context: ./production-service
       dockerfile: Dockerfile
     container_name: production-service
     ports:
@@ -69,9 +69,9 @@ services:
   # Material Service
   material-service:
     build: 
-      context: ./MaterialService
+      context: ./materials-service
       dockerfile: Dockerfile
-    container_name: material-service
+    container_name: materials-service
     ports:
       - "5002:8080"
     environment:
@@ -90,9 +90,9 @@ services:
   # Unit Service
   unit-service:
     build: 
-      context: ./UnitService
+      context: ./units-service
       dockerfile: Dockerfile
-    container_name: unit-service
+    container_name: units-service
     ports:
       - "5003:8080"
     environment:
@@ -108,22 +108,22 @@ services:
       - mes-network
     restart: unless-stopped
 
-  # Report Service (последний!)
+  # Report Service 
   report-service:
     build: 
-      context: ./ReportService
+      context: ./reports-service 
       dockerfile: Dockerfile
     container_name: report-service
     ports:
       - "5004:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
-      Jwt__Issuer: "mes-system"
-      Jwt__Audience: "mes-client"
-      Services__ProductionService: "http://production-service:8080"
-      Services__MaterialService: "http://material-service:8080"
-      Services__UnitService: "http://unit-service:8080"
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - Jwt__Issuer=mes-system
+      - Jwt__Audience=mes-client
+      - Services__ProductionService=http://production-service:8080
+      - Services__MaterialService=http://material-service:8080
+      - Services__UnitService=http://unit-service:8080
     depends_on:
       - auth-service
       - production-service
