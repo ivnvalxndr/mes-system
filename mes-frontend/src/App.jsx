@@ -15,6 +15,7 @@ import {
 import { Menu as MenuIcon } from '@mui/icons-material'
 
 import Login from './pages/Login'
+import Register from './pages/Register' // ← ИМПОРТ РЕГИСТРАЦИИ
 import Dashboard from './pages/Dashboard'
 
 const theme = createTheme({
@@ -90,6 +91,7 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} /> {/* ← МАРШРУТ РЕГИСТРАЦИИ */}
             
             <Route path="/" element={
               <PrivateRoute>

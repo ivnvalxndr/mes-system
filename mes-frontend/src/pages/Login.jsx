@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import {
   Paper,
   TextField,
@@ -8,6 +8,7 @@ import {
   Box,
   Alert,
   Grid,
+  Link,
 } from '@mui/material'
 import { authAPI } from '../services/api'
 
@@ -278,6 +279,26 @@ const Login = () => {
                 </Typography>
               </Grid>
             </Grid>
+            
+            {/* Ссылка на регистрацию */}
+            <Box sx={{ textAlign: 'center', mt: 3 }}>
+              <Typography variant="body2" color="text.secondary">
+                Нет аккаунта?{' '}
+                <Link
+                  component={RouterLink}
+                  to="/register"
+                  sx={{
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline',
+                    },
+                  }}
+                >
+                  Зарегистрироваться
+                </Link>
+              </Typography>
+            </Box>
           </form>
         </Paper>
       </Box>
