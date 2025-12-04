@@ -3,18 +3,24 @@ services:
   postgres-db:
     image: postgres:14
     container_name: mes-backend-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
     ports:
       - "5433:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres  # Пароль postgres
+      POSTGRES_USER: postgres
+      POSTGRES_MULTIPLE_DATABASES: auth_db,production_db,materials_db,units_db,reports_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - mes-network
-    restart: unless-stopped
 
-  # Auth Service
+  # Auth Service - ИСПРАВЛЕННЫЙ
   auth-service:
     build: 
       context: ./auth-service
@@ -25,18 +31,19 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=mes-postgres;Port=5432;Database=auth_db;Username=postgres;Password=123"
+      ConnectionStrings__DefaultConnection: "Host=postgres-db;Port=5432;Database=auth_db;Username=postgres;Password=postgres"  # ← ИСПРАВЛЕНО
       Jwt__Key: "super-secret-key-32-chars-long-for-mes-system-2024"
       Jwt__Issuer: "mes-system"
       Jwt__Audience: "mes-client"
       Jwt__ExpireHours: "24"
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
     networks:
       - mes-network
     restart: unless-stopped
 
-  # Production Service
+  # Production Service - ИСПРАВЛЕННЫЙ
   production-service:
     build: 
       context: ./production-service
@@ -47,7 +54,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=mes-postgres;Port=5432;Database=production_db;Username=postgres;Password=123"
+      ConnectionStrings__DefaultConnection: "Host=postgres-db;Port=5432;Database=production_db;Username=postgres;Password=postgres"  # ← ИСПРАВЛЕНО
       Jwt__Issuer: mes-system
       Jwt__Audience: mes-client
     depends_on:
@@ -57,18 +64,18 @@ services:
       - mes-network
     restart: unless-stopped
 
-  # Material Service (с s!)
+  # Materials Service - ИСПРАВЛЕННЫЙ
   materials-service:
     build: 
       context: ./materials-service
       dockerfile: Dockerfile
-    container_name: materials-service  # ← с s!
+    container_name: materials-service
     ports:
       - "5002:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=mes-postgres;Port=5432;Database=material_db;Username=postgres;Password=123"
+      ConnectionStrings__DefaultConnection: "Host=postgres-db;Port=5432;Database=materials_db;Username=postgres;Password=postgres"  # ← ИСПРАВЛЕНО
       Jwt__Issuer: mes-system
       Jwt__Audience: mes-client
     depends_on:
@@ -78,18 +85,18 @@ services:
       - mes-network
     restart: unless-stopped
 
-  # Unit Service (с s!)
+  # Units Service - ИСПРАВЛЕННЫЙ
   units-service:
     build: 
       context: ./units-service
       dockerfile: Dockerfile
-    container_name: units-service  # ← с s!
+    container_name: units-service
     ports:
       - "5003:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=mes-postgres;Port=5432;Database=unit_db;Username=postgres;Password=123"
+      ConnectionStrings__DefaultConnection: "Host=postgres-db;Port=5432;Database=units_db;Username=postgres;Password=postgres"  # ← ИСПРАВЛЕНО
       Jwt__Issuer: mes-system
       Jwt__Audience: mes-client
     depends_on:
@@ -99,12 +106,12 @@ services:
       - mes-network
     restart: unless-stopped
 
-  # Report Service (с s!)
+  # Reports Service - ИСПРАВЛЕННЫЙ
   reports-service:
     build: 
       context: ./reports-service 
       dockerfile: Dockerfile
-    container_name: reports-service  # ← с s!
+    container_name: reports-service
     ports:
       - "5004:8080"
     environment:
@@ -113,8 +120,8 @@ services:
       Jwt__Issuer: mes-system
       Jwt__Audience: mes-client
       Services__ProductionService: "http://production-service:8080"
-      Services__MaterialService: "http://materials-service:8080"  # ← с s!
-      Services__UnitService: "http://units-service:8080"  # ← с s!
+      Services__MaterialService: "http://materials-service:8080"
+      Services__UnitService: "http://units-service:8080"
     depends_on:
       - auth-service
       - production-service

@@ -89,6 +89,26 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 
 var app = builder.Build();
 
+// Автоматическое применение миграций при запуске
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider
+        .GetRequiredService<ApplicationDbContext>();
+
+    // Проверяем есть ли pending миграции
+    var pendingMigrations = dbContext.Database.GetPendingMigrations();
+    if (pendingMigrations.Any())
+    {
+        Console.WriteLine($"Applying {pendingMigrations.Count()} pending migrations...");
+        dbContext.Database.Migrate();
+        Console.WriteLine("Migrations applied successfully.");
+    }
+    else
+    {
+        Console.WriteLine("No pending migrations.");
+    }
+}
+
 // Pipeline
 if (app.Environment.IsDevelopment())
 {
