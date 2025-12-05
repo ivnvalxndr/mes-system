@@ -9,6 +9,8 @@ docker-compose up --build auth-service auth-db
 docker exec auth-service dotnet ef database update -- апдейт миграций и докера
 
 
+docker exec mes-backend-postgres psql -U postgres -c "CREATE DATABASE auth_db;"
+
 docker-compose down -v --rmi all -- сброс
 docker-compose up -d --build	 -- сборка
 
