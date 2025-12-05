@@ -1,12 +1,12 @@
-﻿using AuthService.Data;
+﻿using System.Text;
+using AuthService.Data;
 using AuthService.Entities;
 using AuthService.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,24 +90,61 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 var app = builder.Build();
 
 // Автоматическое применение миграций при запуске
-using (var scope = app.Services.CreateScope())
+try
 {
-    var dbContext = scope.ServiceProvider
-        .GetRequiredService<ApplicationDbContext>();
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var dbContext = services.GetRequiredService<ApplicationDbContext>();
 
-    // Проверяем есть ли pending миграции
-    var pendingMigrations = dbContext.Database.GetPendingMigrations();
-    if (pendingMigrations.Any())
+    logger.LogInformation("Checking database connection...");
+
+    // Ждем подключения к БД (до 30 секунд)
+    var maxRetries = 30;
+    for (int i = 0; i < maxRetries; i++)
     {
-        Console.WriteLine($"Applying {pendingMigrations.Count()} pending migrations...");
-        dbContext.Database.Migrate();
-        Console.WriteLine("Migrations applied successfully.");
-    }
-    else
-    {
-        Console.WriteLine("No pending migrations.");
+        try
+        {
+            if (dbContext.Database.CanConnect())
+            {
+                logger.LogInformation("Database connected successfully");
+
+                // Применяем миграции
+                var pendingMigrations = dbContext.Database.GetPendingMigrations();
+                if (pendingMigrations.Any())
+                {
+                    logger.LogInformation($"Applying {pendingMigrations.Count()} migrations...");
+                    dbContext.Database.Migrate();
+                    logger.LogInformation("Migrations applied successfully");
+                }
+                else
+                {
+                    logger.LogInformation("No pending migrations");
+                }
+
+                break;
+            }
+        }
+        catch (Exception ex) when (i < maxRetries - 1)
+        {
+            logger.LogWarning($"Attempt {i + 1}/{maxRetries} failed: {ex.Message}");
+            await Task.Delay(1000);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError($"Failed to connect to database after {maxRetries} attempts: {ex.Message}");
+            // Можно продолжить без миграций
+        }
     }
 }
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while migrating the database");
+    // Не падаем, продолжаем работу
+}
+
+
 
 // Pipeline
 if (app.Environment.IsDevelopment())

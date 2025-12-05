@@ -13,7 +13,19 @@ RUN dotnet build "AuthService.csproj" -c Release -o /app/build
 FROM build AS publish
 RUN dotnet publish "AuthService.csproj" -c Release -o /app/publish
 
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
+# Копируем опубликованное приложение
 COPY --from=publish /app/publish .
+
+# А ТАКЖЕ копируем исходный код для миграций
+COPY --from=build /src /src
+
+# Устанавливаем инструменты
+RUN apt-get update && apt-get install -y curl
+RUN curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 8.0 --install-dir /usr/share/dotnet
+RUN /usr/share/dotnet/dotnet tool install --global dotnet-ef --version 8.0.0
+ENV PATH="${PATH}:/usr/share/dotnet:/root/.dotnet/tools"
+
 ENTRYPOINT ["dotnet", "AuthService.dll"]
