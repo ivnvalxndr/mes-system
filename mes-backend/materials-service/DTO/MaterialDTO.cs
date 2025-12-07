@@ -1,39 +1,62 @@
-﻿using System.ComponentModel.DataAnnotations;
-using materials_service.Entities.Enums;
+﻿// materials-service/DTO/MaterialDTO.cs
+using System.ComponentModel.DataAnnotations;
 
 namespace materials_service.DTO;
 
+// Для создания материала (POST)
+public class CreateMaterialDTO
+{
+    [Required]
+    [MaxLength(50)]
+    public string Code { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(500)]
+    public string? Description { get; set; }
+
+    [Required]
+    [Range(0, double.MaxValue)]
+    public decimal Quantity { get; set; }
+
+    [Required]
+    [Range(0, double.MaxValue)]
+    public decimal Price { get; set; }
+
+    [Required]
+    public int UnitId { get; set; }
+}
+
+// Для обновления материала (PUT/PATCH)
+public class UpdateMaterialDTO
+{
+    [MaxLength(200)]
+    public string? Name { get; set; }
+
+    [MaxLength(500)]
+    public string? Description { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal? Quantity { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal? Price { get; set; }
+
+    public int? UnitId { get; set; }
+}
+
+// Для чтения материала (GET)
 public class MaterialDTO
 {
     public int Id { get; set; }
-
-    // Read-only
-    public string MaterialNumber { get; set; } = string.Empty;
-    public MaterialStatus Status { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
-    public string CreatedBy { get; set; } = string.Empty;
-
-    // For create/update
-    [Required]
+    public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-
-    public string Description { get; set; } = string.Empty;
-
-    [Required]
-    public string Type { get; set; } = string.Empty;
-
-    [Required]
-    public string Unit { get; set; } = "шт";
-
-    [Required]
-    [Range(0.01, double.MaxValue)]
+    public string? Description { get; set; }
     public decimal Quantity { get; set; }
-
-    public decimal MinQuantity { get; set; }
-    public decimal MaxQuantity { get; set; }
-
-    public string StorageLocation { get; set; } = string.Empty;
-    public string BatchNumber { get; set; } = string.Empty;
-    public DateTime? ExpiryDate { get; set; }
+    public decimal Price { get; set; }
+    public int UnitId { get; set; }
+    public string UnitName { get; set; } = string.Empty;
+    public List<MaterialRouteStepDTO> RouteSteps { get; set; } = new();
 }

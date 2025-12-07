@@ -1,80 +1,52 @@
-import axios from 'axios'
+import axios from 'axios';
 
-// API Gateway URL
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = 'http://localhost:5002/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-})
+});
 
-// Интерцептор для добавления токена
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('mes_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
-// Интерцептор для обработки ошибок
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('mes_token')
-      localStorage.removeItem('mes_user')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
+// Добавляем interceptor для JWT токена
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-)
+  return config;
+});
 
-// Auth API
-export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),  
-  register: (userData) => api.post('/auth/register', userData),
-  logout: () => api.post('/auth/logout'),
-  getMe: () => api.get('/auth/me'),
-}
+// API для материалов
+export const materialApi = {
+  getAll: () => api.get('/materials').then(res => res.data),
+  getById: (id) => api.get(`/materials/${id}`).then(res => res.data),
+  create: (data) => api.post('/materials', data).then(res => res.data),
+  update: (id, data) => api.put(`/materials/${id}`, data).then(res => res.data),
+  delete: (id) => api.delete(`/materials/${id}`),
+};
 
-// Production API
-export const productionAPI = {
-  getOrders: () => api.get('/production/orders'),
-  createOrder: (order) => api.post('/production/orders', order),
-  getOrder: (id) => api.get(`/production/orders/${id}`),
-  updateOrderStatus: (id, status) => 
-    api.put(`/production/orders/${id}/status`, status),
-}
+// API для единиц измерения
+export const unitsApi = {
+  getAll: () => api.get('/units').then(res => res.data),
+  getById: (id) => api.get(`/units/${id}`).then(res => res.data),
+  create: (data) => api.post('/units', data).then(res => res.data),
+};
 
-// Materials API
-export const materialsAPI = {
-  getMaterials: () => api.get('/materials'),
-  createMaterial: (material) => api.post('/materials', material),
-  addRouteStep: (step) => api.post('/materials/routes', step),
-  getMaterialRoute: (id) => api.get(`/materials/${id}/route`),
-}
+// API для шагов маршрута материалов
+export const materialRouteStepsApi = {
+  getByMaterialId: (materialId) => 
+    api.get(`/materials/${materialId}/materialroutesteps`).then(res => res.data),
+  create: (materialId, data) => 
+    api.post(`/materials/${materialId}/materialroutesteps`, data).then(res => res.data),
+  delete: (materialId, stepId) => 
+    api.delete(`/materials/${materialId}/materialroutesteps/${stepId}`),
+};
 
-// Units API
-export const unitsAPI = {
-  getUnits: () => api.get('/units'),
-  getUnitStatus: (id) => api.get(`/units/${id}/status`),
-  updateUnitStatus: (id, statusData) => 
-    api.put(`/units/${id}/status`, statusData),
-}
+export const authApi = {
+  login: (credentials) => api.post('/auth/login', credentials).then(res => res.data),
+  register: (userData) => api.post('/auth/register', userData).then(res => res.data),
+};
 
-// Reports API
-export const reportsAPI = {
-  getKPI: () => api.get('/reports/kpi'),
-  getProductionStats: (startDate, endDate) => 
-    api.get('/reports/production-stats', { params: { startDate, endDate } }),
-  getMaterialUsage: () => api.get('/reports/material-usage'),
-  getUnitPerformance: () => api.get('/reports/unit-performance'),
-}
-
-export default api
+export default api;

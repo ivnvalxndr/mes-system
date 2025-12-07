@@ -26,7 +26,7 @@ timeout /t 10
 # 4. Создай БД
 docker exec mes-postgres psql -U postgres -c "CREATE DATABASE auth_db;"
 docker exec mes-postgres psql -U postgres -c "CREATE DATABASE production_db;"
-docker exec mes-postgres psql -U postgres -c "CREATE DATABASE material_db;"
+docker exec mes-backend-postgres psql -U postgres -c "CREATE DATABASE materials_db;"
 docker exec mes-postgres psql -U postgres -c "CREATE DATABASE unit_db;"
 
 # 5. Запусти всё

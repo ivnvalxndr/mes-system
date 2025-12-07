@@ -10,20 +10,29 @@ public class MaterialRouteStep
 
     [Required]
     public int MaterialId { get; set; }
-    public Material Material { get; set; } = null!;
 
-    public RouteStepType StepType { get; set; }
+    [Required]
+    public MaterialRouteStepType StepType { get; set; } 
 
+    [Required]
+    [MaxLength(200)]
     public string FromLocation { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(200)]
     public string ToLocation { get; set; } = string.Empty;
 
+    [Required]
     public decimal Quantity { get; set; }
 
-    public string? ProductionOrderId { get; set; }
+    [MaxLength(50)]
     public string? UnitId { get; set; }
 
+    [MaxLength(1000)]
     public string Notes { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public string CreatedBy { get; set; } = string.Empty;
+
+    // Навигационное свойство
+    public Material Material { get; set; } = null!;
 }

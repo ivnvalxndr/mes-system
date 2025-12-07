@@ -1,5 +1,10 @@
 using System.Text;
 using materials_service.Data;
+using materials_service.Repositories;
+using materials_service.Repositories.Interfaces;
+using materials_service.Service.Interfaces;
+using materials_service.Service;
+using materials_service.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,7 +26,13 @@ namespace materials_service
             builder.Services.AddDbContext<MaterialDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // Add JWT Authentication (как в Auth Service)
+            // Регистрация сервисов
+            builder.Services.AddScoped<IMaterialsRepository, MaterialsRepository>();
+            builder.Services.AddScoped<IMaterialsService, MaterialsService>();
+            builder.Services.AddScoped<IMaterialRouteStepRepository, MaterialRouteStepRepository>();
+            builder.Services.AddScoped<IMaterialRouteStepService, MaterialRouteStepService>();
+
+            // Add JWT Authentication 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -38,6 +49,17 @@ namespace materials_service
                     };
                 });
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend",
+                    policy =>
+                    {
+                        policy.WithOrigins("http://localhost:5173")
+                            .AllowAnyHeader()
+                            .AllowAnyMethod();
+                    });
+            });
+
             var app = builder.Build();
 
             // Configure middleware
@@ -50,6 +72,7 @@ namespace materials_service
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+            app.UseCors("AllowFrontend");
 
             app.Run();
         }

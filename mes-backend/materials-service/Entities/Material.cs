@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using materials_service.Entities.Enums;
+using units_service.Entities;
 
 namespace materials_service.Entities;
 
@@ -9,32 +11,28 @@ public class Material
     public int Id { get; set; }
 
     [Required]
-    public string MaterialNumber { get; set; } = string.Empty;
+    [MaxLength(50)]
+    public string Code { get; set; } = string.Empty; 
 
     [Required]
+    [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
-    public string Description { get; set; } = string.Empty;
-
-    [Required]
-    public string Type { get; set; } = string.Empty;
-
-    [Required]
-    public string Unit { get; set; } = "шт";
+    [MaxLength(500)]
+    public string? Description { get; set; }
 
     [Required]
     public decimal Quantity { get; set; }
 
-    public decimal MinQuantity { get; set; }
-    public decimal MaxQuantity { get; set; }
+    [Required]
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal Price { get; set; } 
 
-    public MaterialStatus Status { get; set; } = MaterialStatus.PendingReceipt;
+    [Required]
+    public int UnitId { get; set; }
 
-    public string StorageLocation { get; set; } = string.Empty;
-    public string BatchNumber { get; set; } = string.Empty;
-    public DateTime? ExpiryDate { get; set; }
+    [ForeignKey("UnitId")]
+    public Unit Unit { get; set; } = null!;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public string CreatedBy { get; set; } = string.Empty;
+    public List<MaterialRouteStep> RouteSteps { get; set; } = new();
 }

@@ -1,211 +1,144 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using materials_service.Data;
+﻿// materials-service/Controllers/MaterialsController.cs
+using Microsoft.AspNetCore.Mvc;
 using materials_service.DTO;
-using materials_service.Entities;
-using materials_service.Entities.Enums;
+using materials_service.Services;
+using materials_service.Service.Interfaces;
 
-namespace MaterialService.Controllers
+namespace materials_service.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class MaterialsController : ControllerBase
 {
-    [ApiController]
-    [Route("api/materials")]
-    public class MaterialController : ControllerBase
+    private readonly IMaterialsService _materialsService;
+    private readonly ILogger<MaterialsController> _logger;
+
+    public MaterialsController(
+        IMaterialsService materialsService,
+        ILogger<MaterialsController> logger)
     {
-        private readonly MaterialDbContext _context;
-        private readonly ILogger<MaterialController> _logger;
+        _materialsService = materialsService;
+        _logger = logger;
+    }
 
-        public MaterialController(MaterialDbContext context, ILogger<MaterialController> logger)
+    // GET: api/materials
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<IEnumerable<MaterialDTO>>> GetAll()
+    {
+        try
         {
-            _context = context;
-            _logger = logger;
+            var materials = await _materialsService.GetAllMaterialsAsync();
+            return Ok(materials);
         }
-
-        // GET /api/materials
-        [HttpGet]
-        public async Task<IActionResult> GetMaterials()
+        catch (Exception ex)
         {
-            var materials = await _context.Materials.ToListAsync();
-
-            var response = materials.Select(m => new MaterialDTO
-            {
-                Id = m.Id,
-                MaterialNumber = m.MaterialNumber,
-                Name = m.Name,
-                Description = m.Description,
-                Type = m.Type,
-                Unit = m.Unit,
-                Quantity = m.Quantity,
-                MinQuantity = m.MinQuantity,
-                MaxQuantity = m.MaxQuantity,
-                Status = m.Status,
-                StorageLocation = m.StorageLocation,
-                BatchNumber = m.BatchNumber,
-                ExpiryDate = m.ExpiryDate,
-                CreatedAt = m.CreatedAt,
-                UpdatedAt = m.UpdatedAt,
-                CreatedBy = m.CreatedBy
-            });
-
-            return Ok(response);
+            _logger.LogError(ex, "Error getting all materials");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
         }
+    }
 
-        // POST /api/materials
-        [HttpPost]
-        public async Task<IActionResult> CreateMaterial([FromBody] MaterialDTO request)
+    // GET: api/materials/{id}
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<MaterialDTO>> GetById(int id)
+    {
+        try
         {
-            var material = new Material
+            var material = await _materialsService.GetMaterialByIdAsync(id);
+            if (material == null)
             {
-                MaterialNumber = GenerateMaterialNumber(),
-                Name = request.Name,
-                Description = request.Description,
-                Type = request.Type,
-                Unit = request.Unit,
-                Quantity = request.Quantity,
-                MinQuantity = request.MinQuantity,
-                MaxQuantity = request.MaxQuantity,
-                Status = MaterialStatus.PendingReceipt, // ← ИЗМЕНИЛ
-                StorageLocation = request.StorageLocation,
-                BatchNumber = request.BatchNumber,
-                ExpiryDate = request.ExpiryDate,
-                CreatedBy = User.Identity?.Name ?? "System"
-            };
-
-            _context.Materials.Add(material);
-            await _context.SaveChangesAsync();
-
-            // Создаем первый шаг маршрута - поступление
-            var routeStep = new MaterialRouteStep
-            {
-                MaterialId = material.Id,
-                StepType = RouteStepType.Receipt, // ← ИЗМЕНИЛ
-                FromLocation = "Supplier", // ← ИЗМЕНИЛ
-                ToLocation = material.StorageLocation,
-                Quantity = material.Quantity,
-                CreatedBy = material.CreatedBy
-            };
-
-            _context.MaterialRouteSteps.Add(routeStep);
-            await _context.SaveChangesAsync();
-
-            return Ok(new MaterialDTO
-            {
-                Id = material.Id,
-                MaterialNumber = material.MaterialNumber,
-                Name = material.Name,
-                Description = material.Description,
-                Type = material.Type,
-                Unit = material.Unit,
-                Quantity = material.Quantity,
-                MinQuantity = material.MinQuantity,
-                MaxQuantity = material.MaxQuantity,
-                Status = material.Status,
-                StorageLocation = material.StorageLocation,
-                BatchNumber = material.BatchNumber,
-                ExpiryDate = material.ExpiryDate,
-                CreatedAt = material.CreatedAt,
-                UpdatedAt = material.UpdatedAt,
-                CreatedBy = material.CreatedBy
-            });
+                return NotFound(new { message = $"Material with id {id} not found" });
+            }
+            return Ok(material);
         }
-
-        // PUT /api/materials/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateMaterial(int id, [FromBody] MaterialDTO request)
+        catch (Exception ex)
         {
-            var material = await _context.Materials.FindAsync(id);
-            if (material == null) return NotFound();
-
-            // Обновляем только разрешенные поля
-            material.Name = request.Name;
-            material.Description = request.Description;
-            material.Type = request.Type;
-            material.Unit = request.Unit;
-            material.Quantity = request.Quantity;
-            material.MinQuantity = request.MinQuantity;
-            material.MaxQuantity = request.MaxQuantity;
-            material.StorageLocation = request.StorageLocation;
-            material.BatchNumber = request.BatchNumber;
-            material.ExpiryDate = request.ExpiryDate;
-            material.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Message = "Material updated" });
+            _logger.LogError(ex, "Error getting material by id {Id}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
         }
+    }
 
-        // POST /api/materials/routes
-        [HttpPost("routes")]
-        public async Task<IActionResult> AddRouteStep([FromBody] RouteStepDTO request)
+    // POST: api/materials
+    [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<MaterialDTO>> Create([FromBody] CreateMaterialDTO createDTO)
+    {
+        try
         {
-            var material = await _context.Materials.FindAsync(request.MaterialId);
-            if (material == null) return NotFound();
-
-            var routeStep = new MaterialRouteStep
+            if (!ModelState.IsValid)
             {
-                MaterialId = request.MaterialId,
-                StepType = request.StepType,
-                FromLocation = request.FromLocation,
-                ToLocation = request.ToLocation,
-                Quantity = request.Quantity,
-                ProductionOrderId = request.ProductionOrderId,
-                UnitId = request.UnitId,
-                Notes = request.Notes,
-                CreatedBy = User.Identity?.Name ?? "System"
-            };
-
-            // Обновляем статус материала в зависимости от типа шага
-            material.Status = request.StepType switch
-            {
-                RouteStepType.Receipt => MaterialStatus.PendingReceipt, // ← ИЗМЕНИЛ
-                RouteStepType.Transfer => MaterialStatus.InStock, // ← ИЗМЕНИЛ
-                RouteStepType.Reservation => MaterialStatus.Reserved, // ← ИЗМЕНИЛ
-                RouteStepType.Usage => MaterialStatus.InProduction, // ← ИЗМЕНИЛ
-                RouteStepType.WriteOff => MaterialStatus.WrittenOff, // ← ИЗМЕНИЛ
-                _ => material.Status
-            };
-
-            // Обновляем количество материала
-            if (request.StepType == RouteStepType.Usage ||
-                request.StepType == RouteStepType.WriteOff)
-            {
-                material.Quantity -= request.Quantity;
+                return BadRequest(ModelState);
             }
 
-            material.UpdatedAt = DateTime.UtcNow;
+            var material = await _materialsService.CreateMaterialAsync(createDTO);
 
-            _context.MaterialRouteSteps.Add(routeStep);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Message = "Route step added" });
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = material.Id },
+                material);
         }
-
-        // GET /api/materials/{id}/route
-        [HttpGet("{id}/route")]
-        public async Task<IActionResult> GetMaterialRoute(int id)
+        catch (Exception ex)
         {
-            var routeSteps = await _context.MaterialRouteSteps
-                .Where(r => r.MaterialId == id)
-                .OrderBy(r => r.CreatedAt)
-                .ToListAsync();
+            _logger.LogError(ex, "Error creating material");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+        }
+    }
 
-            return Ok(routeSteps.Select(r => new
+    // PUT: api/materials/{id}
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<MaterialDTO>> Update(int id, [FromBody] UpdateMaterialDTO updateDTO)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
             {
-                r.Id,
-                r.StepType,
-                r.FromLocation,
-                r.ToLocation,
-                r.Quantity,
-                r.ProductionOrderId,
-                r.UnitId,
-                r.Notes,
-                r.CreatedAt,
-                r.CreatedBy
-            }));
-        }
+                return BadRequest(ModelState);
+            }
 
-        private string GenerateMaterialNumber()
+            var material = await _materialsService.UpdateMaterialAsync(id, updateDTO);
+            return Ok(material);
+        }
+        catch (KeyNotFoundException ex)
         {
-            return $"MAT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 6).ToUpper()}";
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating material {Id}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+        }
+    }
+
+    // DELETE: api/materials/{id}
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Delete(int id)
+    {
+        try
+        {
+            await _materialsService.DeleteMaterialAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting material {Id}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
         }
     }
 }
