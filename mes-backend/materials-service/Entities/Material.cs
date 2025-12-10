@@ -24,27 +24,38 @@ public class Material
     [Column("description")]
     public string? Description { get; set; }
 
-    [Required]
-    [Range(0, double.MaxValue)]
-    [Column("quantity", TypeName = "decimal(18,3)")]
-    public decimal Quantity { get; set; }
+    // Внешний ключ для родительского материала (иерархическая структура)
+    [Column("parent_id")]
+    public int? ParentId { get; set; }
 
-    [Required]
-    [Range(0, double.MaxValue)]
-    [Column("price", TypeName = "decimal(18,2)")]
-    public decimal Price { get; set; }
-
-    [Required]
+    // Единица измерения по умолчанию для материала
     [Column("unit_id")]
     public int UnitId { get; set; }
 
-    // ДОБАВЬ ЭТО НАВИГАЦИОННОЕ СВОЙСТВО:
+    // Количество в штуках (по умолчанию/базовое)
+    [Column("pcs")]
+    public decimal? Pcs { get; set; }
+
+    // Количество в метрах (по умолчанию/базовое)
+    [Column("mts")]
+    public decimal? Mts { get; set; }
+
+    // Количество в тоннах (по умолчанию/базовое)
+    [Column("tns")]
+    public decimal? Tns { get; set; }
+
+    // Навигационное свойство к родительскому материалу
+    [ForeignKey("ParentId")]
+    public Material? Parent { get; set; }
+
+    // Навигационное свойство к дочерним материалам
+    [InverseProperty("Parent")]
+    public List<Material> Children { get; set; } = new();
+
+    // Навигационное свойство к единице измерения
     [ForeignKey("UnitId")]
     public Unit Unit { get; set; } = null!;
 
     // Навигационное свойство для шагов маршрута
     public List<MaterialRouteStep> RouteSteps { get; set; } = new();
-
-    [NotMapped]
-    public decimal TotalValue => Quantity * Price;
 }

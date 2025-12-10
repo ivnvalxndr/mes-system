@@ -2,9 +2,7 @@
 
 public enum UnitStatus
 {
-    Available,      // Доступно
-    InUse,          // В работе
-    Maintenance,    // На обслуживании
-    Broken,         // Сломано
-    Offline         // Отключено
+    Available,      // Доступен
+    Unavailable,    // Недоступен
+    Archived        // Архивирован
 }

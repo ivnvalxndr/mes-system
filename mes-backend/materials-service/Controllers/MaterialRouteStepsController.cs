@@ -1,286 +1,317 @@
-﻿// materials-service/Controllers/MaterialRouteStepsController.cs
-using Microsoft.AspNetCore.Mvc;
-using materials_service.DTO;
-using materials_service.Services;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using materials_service.Data;
+using materials_service.Entities;
 using materials_service.Entities.Enums;
-using materials_service.Service.Interfaces;
+using materials_service.DTO;
 
 namespace materials_service.Controllers;
 
 [ApiController]
-[Route("api/materials/{materialId}/[controller]")]
+[Route("api/[controller]")]
 public class MaterialRouteStepsController : ControllerBase
 {
-    private readonly IMaterialRouteStepService _stepService;
-    private readonly ILogger<MaterialRouteStepsController> _logger;
+    private readonly MaterialDbContext _context;
 
-    public MaterialRouteStepsController(
-        IMaterialRouteStepService stepService,
-        ILogger<MaterialRouteStepsController> logger)
+    public MaterialRouteStepsController(MaterialDbContext context)
     {
-        _stepService = stepService;
-        _logger = logger;
+        _context = context;
     }
 
-    // GET: api/materials/{materialId}/materialroutesteps
+    // GET: api/materialroutesteps
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<IEnumerable<MaterialRouteStepDTO>>> GetStepsByMaterialId(int materialId)
+    public async Task<ActionResult<IEnumerable<MaterialRouteStepDTO>>> GetMaterialRouteSteps(
+        [FromQuery] int? materialId = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
     {
-        try
+        IQueryable<MaterialRouteStep> query = _context.MaterialRouteSteps
+            .Include(r => r.Material)
+            .Include(r => r.Unit);
+
+        if (materialId.HasValue)
         {
-            var steps = await _stepService.GetStepsByMaterialIdAsync(materialId);
-            return Ok(steps);
+            query = query.Where(r => r.MaterialId == materialId);
         }
-        catch (Exception ex)
+
+        if (fromDate.HasValue)
         {
-            _logger.LogError(ex, "Error getting steps for material {MaterialId}", materialId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            query = query.Where(r => r.OperationDate >= fromDate.Value);
         }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(r => r.OperationDate <= toDate.Value);
+        }
+
+        query = query.OrderByDescending(r => r.OperationDate);
+
+        var steps = await query.ToListAsync();
+        return Ok(steps.Select(r => MapToDto(r)));
     }
 
-    // GET: api/materials/{materialId}/materialroutesteps/{stepId}
-    [HttpGet("{stepId:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<MaterialRouteStepDTO>> GetStepById(int materialId, int stepId)
+    // GET: api/materialroutesteps/{id}
+    [HttpGet("{id}")]
+    public async Task<ActionResult<MaterialRouteStepDTO>> GetMaterialRouteStep(int id)
     {
-        try
-        {
-            var step = await _stepService.GetStepByIdAsync(stepId);
-            if (step == null)
-            {
-                return NotFound(new { message = $"Route step with id {stepId} not found" });
-            }
+        var step = await _context.MaterialRouteSteps
+            .Include(r => r.Material)
+            .Include(r => r.Unit)
+            .FirstOrDefaultAsync(r => r.Id == id);
 
-            if (step.MaterialId != materialId)
-            {
-                return BadRequest(new { message = $"Step {stepId} does not belong to material {materialId}" });
-            }
-
-            return Ok(step);
-        }
-        catch (Exception ex)
+        if (step == null)
         {
-            _logger.LogError(ex, "Error getting step {StepId} for material {MaterialId}", stepId, materialId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            return NotFound();
         }
+
+        return MapToDto(step);
     }
 
-    // POST: api/materials/{materialId}/materialroutesteps
+    // POST: api/materialroutesteps
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<MaterialRouteStepDTO>> CreateStep(
-        int materialId,
-        [FromBody] CreateMaterialRouteStepDTO createDTO)
+    public async Task<ActionResult<MaterialRouteStepDTO>> CreateMaterialRouteStep(
+    CreateMaterialRouteStepDTO createDto)
     {
         try
         {
-            if (!ModelState.IsValid)
+            // Проверка существования материала
+            var materialExists = await _context.Materials.AnyAsync(m => m.Id == createDto.MaterialId);
+            if (!materialExists)
             {
-                return BadRequest(ModelState);
+                return BadRequest("Material not found");
             }
 
-            // Валидация StepType (enum)
-            if (!Enum.IsDefined(typeof(MaterialRouteStepType), createDTO.StepType))
+            // Проверка существования единицы измерения (если указана)
+            if (createDto.UnitId.HasValue)
             {
-                return BadRequest(new
+                var unitExists = await _context.Units.AnyAsync(u => u.Id == createDto.UnitId.Value);
+                if (!unitExists)
                 {
-                    message = "Invalid StepType value",
-                    validValues = Enum.GetNames(typeof(MaterialRouteStepType))
-                });
+                    return BadRequest("Unit not found");
+                }
             }
 
-            // Устанавливаем MaterialId из роута
-            createDTO.MaterialId = materialId;
-
-            var createdStep = await _stepService.CreateStepAsync(createDTO);
-
-            return CreatedAtAction(
-                nameof(GetStepById),
-                new { materialId = materialId, stepId = createdStep.Id },
-                createdStep);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating step for material {MaterialId}", materialId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
-        }
-    }
-
-    // PUT: api/materials/{materialId}/materialroutesteps/{stepId}
-    [HttpPut("{stepId:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<MaterialRouteStepDTO>> UpdateStep(
-        int materialId,
-        int stepId,
-        [FromBody] MaterialRouteStepDTO updateDTO)
-    {
-        try
-        {
-            if (!ModelState.IsValid)
+            // Проверка типа шага
+            if (!Enum.TryParse<MaterialRouteStepType>(createDto.StepType, out var stepType))
             {
-                return BadRequest(ModelState);
+                return BadRequest($"Invalid step type. Valid values: {string.Join(", ", Enum.GetNames(typeof(MaterialRouteStepType)))}");
             }
 
-            // Валидация StepType (enum)
-            if (!Enum.IsDefined(typeof(MaterialRouteStepType), updateDTO.StepType))
+            // Проверка, что указано хотя бы одно количество
+            if (!createDto.Pcs.HasValue && !createDto.Mts.HasValue && !createDto.Tns.HasValue)
             {
-                return BadRequest(new
-                {
-                    message = "Invalid StepType value",
-                    validValues = Enum.GetNames(typeof(MaterialRouteStepType))
-                });
+                return BadRequest("At least one quantity field must be specified (Pcs, Mts, or Tns)");
             }
 
-            // Проверяем, что stepId в пути совпадает с Id в DTO
-            if (updateDTO.Id != 0 && updateDTO.Id != stepId)
+            // Проверка отрицательных значений
+            if (createDto.Pcs.HasValue && createDto.Pcs < 0)
+                return BadRequest("Pcs cannot be negative");
+
+            if (createDto.Mts.HasValue && createDto.Mts < 0)
+                return BadRequest("Mts cannot be negative");
+
+            if (createDto.Tns.HasValue && createDto.Tns < 0)
+                return BadRequest("Tns cannot be negative");
+
+            var step = new MaterialRouteStep
             {
-                return BadRequest(new { message = "StepId in URL does not match Id in request body" });
-            }
-
-            // Устанавливаем правильные ID
-            updateDTO.Id = stepId;
-            updateDTO.MaterialId = materialId;
-
-            var updatedStep = await _stepService.UpdateStepAsync(stepId, updateDTO);
-            return Ok(updatedStep);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating step {StepId} for material {MaterialId}", stepId, materialId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
-        }
-    }
-
-    // PATCH: api/materials/{materialId}/materialroutesteps/{stepId}
-    [HttpPatch("{stepId:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<MaterialRouteStepDTO>> PartialUpdateStep(
-        int materialId,
-        int stepId,
-        [FromBody] Dictionary<string, object> patchData)
-    {
-        try
-        {
-            var existingStep = await _stepService.GetStepByIdAsync(stepId);
-            if (existingStep == null)
-            {
-                return NotFound(new { message = $"Route step with id {stepId} not found" });
-            }
-
-            if (existingStep.MaterialId != materialId)
-            {
-                return BadRequest(new { message = $"Step {stepId} does not belong to material {materialId}" });
-            }
-
-            // Создаем DTO для обновления
-            var updateDTO = new MaterialRouteStepDTO
-            {
-                Id = existingStep.Id,
-                MaterialId = existingStep.MaterialId,
-                StepType = existingStep.StepType,
-                FromLocation = existingStep.FromLocation,
-                ToLocation = existingStep.ToLocation,
-                Quantity = existingStep.Quantity,
-                UnitId = existingStep.UnitId,
-                Notes = existingStep.Notes,
-                CreatedAt = existingStep.CreatedAt
+                MaterialId = createDto.MaterialId,
+                StepType = stepType,
+                FromLocation = createDto.FromLocation?.Trim() ?? string.Empty,
+                ToLocation = createDto.ToLocation?.Trim() ?? string.Empty,
+                UnitId = createDto.UnitId,
+                OperationDate = createDto.OperationDate,
+                Pcs = createDto.Pcs,
+                Mts = createDto.Mts,
+                Tns = createDto.Tns,
+                Notes = createDto.Notes?.Trim() ?? string.Empty,
+                CreatedAt = DateTime.UtcNow
             };
 
-            // Частичное обновление
-            if (patchData.ContainsKey("stepType"))
+            _context.MaterialRouteSteps.Add(step);
+            await _context.SaveChangesAsync();
+
+            // Загружаем связанные данные
+            await _context.Entry(step)
+                .Reference(r => r.Material)
+                .LoadAsync();
+
+            if (step.UnitId.HasValue)
             {
-                if (Enum.TryParse<MaterialRouteStepType>(patchData["stepType"].ToString(), out var stepType))
-                {
-                    updateDTO.StepType = stepType;
-                }
-                else
-                {
-                    return BadRequest(new
-                    {
-                        message = "Invalid StepType value",
-                        validValues = Enum.GetNames(typeof(MaterialRouteStepType))
-                    });
-                }
+                await _context.Entry(step)
+                    .Reference(r => r.Unit)
+                    .LoadAsync();
             }
 
-            if (patchData.ContainsKey("fromLocation"))
-                updateDTO.FromLocation = patchData["fromLocation"].ToString()!;
-
-            if (patchData.ContainsKey("toLocation"))
-                updateDTO.ToLocation = patchData["toLocation"].ToString()!;
-
-            if (patchData.ContainsKey("quantity") && decimal.TryParse(patchData["quantity"].ToString(), out var quantity))
-                updateDTO.Quantity = quantity;
-
-            if (patchData.ContainsKey("unitId"))
-                updateDTO.UnitId = patchData["unitId"].ToString();
-
-            if (patchData.ContainsKey("notes"))
-                updateDTO.Notes = patchData["notes"].ToString()!;
-
-            var updatedStep = await _stepService.UpdateStepAsync(stepId, updateDTO);
-            return Ok(updatedStep);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
+            return CreatedAtAction(nameof(GetMaterialRouteStep), new { id = step.Id }, MapToDto(step));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error partially updating step {StepId} for material {MaterialId}", stepId, materialId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            // Логирование ошибки
+            //_logger.LogError(ex, "Error creating material route step");
+            return StatusCode(500, "An error occurred while creating the material route step");
         }
     }
 
-    // DELETE: api/materials/{materialId}/materialroutesteps/{stepId}
-    [HttpDelete("{stepId:int}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DeleteStep(int materialId, int stepId)
+    // PUT: api/materialroutesteps/{id}
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateMaterialRouteStep(int id, UpdateMaterialRouteStepDTO updateDto)
     {
+        var step = await _context.MaterialRouteSteps.FindAsync(id);
+        if (step == null)
+        {
+            return NotFound();
+        }
+
+        // Обновляем поля
+        if (!string.IsNullOrEmpty(updateDto.StepType) &&
+            Enum.TryParse<MaterialRouteStepType>(updateDto.StepType, out var newStepType))
+            step.StepType = newStepType;
+
+        if (!string.IsNullOrEmpty(updateDto.FromLocation))
+            step.FromLocation = updateDto.FromLocation;
+
+        if (!string.IsNullOrEmpty(updateDto.ToLocation))
+            step.ToLocation = updateDto.ToLocation;
+
+        if (updateDto.UnitId.HasValue)
+        {
+            var unitExists = await _context.Units.AnyAsync(u => u.Id == updateDto.UnitId);
+            if (!unitExists)
+            {
+                return BadRequest("Unit not found");
+            }
+            step.UnitId = updateDto.UnitId;
+        }
+
+        if (updateDto.OperationDate.HasValue)
+            step.OperationDate = updateDto.OperationDate.Value;
+
+        if (updateDto.Pcs.HasValue)
+            step.Pcs = updateDto.Pcs;
+
+        if (updateDto.Mts.HasValue)
+            step.Mts = updateDto.Mts;
+
+        if (updateDto.Tns.HasValue)
+            step.Tns = updateDto.Tns;
+
+        if (!string.IsNullOrEmpty(updateDto.Notes))
+            step.Notes = updateDto.Notes;
+
         try
         {
-            var step = await _stepService.GetStepByIdAsync(stepId);
-            if (step == null)
-            {
-                return NotFound(new { message = $"Route step with id {stepId} not found" });
-            }
-
-            if (step.MaterialId != materialId)
-            {
-                return BadRequest(new { message = $"Step {stepId} does not belong to material {materialId}" });
-            }
-
-            await _stepService.DeleteStepAsync(stepId);
-            return NoContent();
+            await _context.SaveChangesAsync();
         }
-        catch (KeyNotFoundException ex)
+        catch (DbUpdateConcurrencyException)
         {
-            return NotFound(new { message = ex.Message });
+            if (!MaterialRouteStepExists(id))
+            {
+                return NotFound();
+            }
+            throw;
         }
-        catch (Exception ex)
+
+        return NoContent();
+    }
+
+    // DELETE: api/materialroutesteps/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteMaterialRouteStep(int id)
+    {
+        var step = await _context.MaterialRouteSteps.FindAsync(id);
+        if (step == null)
         {
-            _logger.LogError(ex, "Error deleting step {StepId} for material {MaterialId}", stepId, materialId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            return NotFound();
         }
+
+        _context.MaterialRouteSteps.Remove(step);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // GET: api/materialroutesteps/material/{materialId}
+    [HttpGet("material/{materialId}")]
+    public async Task<ActionResult<IEnumerable<MaterialRouteStepDTO>>> GetStepsByMaterial(int materialId)
+    {
+        var materialExists = await _context.Materials.AnyAsync(m => m.Id == materialId);
+        if (!materialExists)
+        {
+            return NotFound("Material not found");
+        }
+
+        var steps = await _context.MaterialRouteSteps
+            .Where(r => r.MaterialId == materialId)
+            .Include(r => r.Unit)
+            .OrderByDescending(r => r.OperationDate)
+            .ToListAsync();
+
+        return Ok(steps.Select(r => MapToDto(r)));
+    }
+
+    // GET: api/materialroutesteps/summary/{materialId}
+    [HttpGet("summary/{materialId}")]
+    public async Task<ActionResult<object>> GetMaterialSummary(int materialId)
+    {
+        var materialExists = await _context.Materials.AnyAsync(m => m.Id == materialId);
+        if (!materialExists)
+        {
+            return NotFound("Material not found");
+        }
+
+        var steps = await _context.MaterialRouteSteps
+            .Where(r => r.MaterialId == materialId)
+            .ToListAsync();
+
+        var summary = new
+        {
+            TotalPcs = steps.Where(r => r.Pcs.HasValue).Sum(r => r.Pcs) ?? 0,
+            TotalMts = steps.Where(r => r.Mts.HasValue).Sum(r => r.Mts) ?? 0,
+            TotalTns = steps.Where(r => r.Tns.HasValue).Sum(r => r.Tns) ?? 0,
+            StepCount = steps.Count,
+            LastOperation = steps.OrderByDescending(r => r.OperationDate).FirstOrDefault()?.OperationDate
+        };
+
+        return Ok(summary);
+    }
+
+    private bool MaterialRouteStepExists(int id)
+    {
+        return _context.MaterialRouteSteps.Any(e => e.Id == id);
+    }
+
+    private static MaterialRouteStepDTO MapToDto(MaterialRouteStep step)
+    {
+        return new MaterialRouteStepDTO
+        {
+            Id = step.Id,
+            MaterialId = step.MaterialId,
+            StepType = step.StepType.ToString(),
+            FromLocation = step.FromLocation,
+            ToLocation = step.ToLocation,
+            UnitId = step.UnitId,
+            OperationDate = step.OperationDate,
+            Pcs = step.Pcs,
+            Mts = step.Mts,
+            Tns = step.Tns,
+            Notes = step.Notes,
+            CreatedAt = step.CreatedAt,
+            Material = step.Material != null ? new MaterialSimpleDTO
+            {
+                Id = step.Material.Id,
+                Code = step.Material.Code,
+                Name = step.Material.Name
+            } : null,
+            Unit = step.Unit != null ? new UnitDTO
+            {
+                Id = step.Unit.Id,
+                Code = step.Unit.Code,
+                Name = step.Unit.Name,
+                Description = step.Unit.Description,
+                Type = step.Unit.Type.ToString(),
+                Status = step.Unit.Status.ToString()
+            } : null
+        };
     }
 }

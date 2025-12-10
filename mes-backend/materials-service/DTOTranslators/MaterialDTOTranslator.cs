@@ -1,5 +1,4 @@
-﻿// materials-service/DTOTranslators/MaterialDTOTranslator.cs
-using materials_service.DTO;
+﻿using materials_service.DTO;
 using materials_service.Entities;
 
 namespace materials_service.DTOTranslators;
@@ -18,13 +17,33 @@ public static class MaterialDTOTranslator
             Code = material.Code,
             Name = material.Name,
             Description = material.Description,
-            Quantity = material.Quantity,
-            Price = material.Price,
+            ParentId = material.ParentId,
             UnitId = material.UnitId,
-            TotalValue = material.TotalValue,
+            Pcs = material.Pcs,
+            Mts = material.Mts,
+            Tns = material.Tns,
+            Unit = material.Unit != null ? UnitDTOTranslator.ToDTO(material.Unit) : null,
+            Parent = material.Parent != null ? ToSimpleDTO(material.Parent) : null,
+            Children = material.Children?
+                .Select(ToSimpleDTO)
+                .ToList() ?? new List<MaterialSimpleDTO>(),
             RouteSteps = material.RouteSteps?
                 .Select(MaterialRouteStepDTOTranslator.ToDTO)
                 .ToList() ?? new List<MaterialRouteStepDTO>()
+        };
+    }
+
+    // Material → MaterialSimpleDTO (для вложенных объектов)
+    public static MaterialSimpleDTO ToSimpleDTO(Material material)
+    {
+        if (material == null)
+            throw new ArgumentNullException(nameof(material));
+
+        return new MaterialSimpleDTO
+        {
+            Id = material.Id,
+            Code = material.Code,
+            Name = material.Name
         };
     }
 
@@ -32,6 +51,12 @@ public static class MaterialDTOTranslator
     public static IEnumerable<MaterialDTO> ToDTOs(IEnumerable<Material> materials)
     {
         return materials.Select(ToDTO);
+    }
+
+    // IEnumerable<Material> → IEnumerable<MaterialSimpleDTO> (коллекция простых DTO)
+    public static IEnumerable<MaterialSimpleDTO> ToSimpleDTOs(IEnumerable<Material> materials)
+    {
+        return materials.Select(ToSimpleDTO);
     }
 
     // CreateMaterialDTO → Material
@@ -45,14 +70,17 @@ public static class MaterialDTOTranslator
             Code = createDTO.Code,
             Name = createDTO.Name,
             Description = createDTO.Description,
-            Quantity = createDTO.Quantity,
-            Price = createDTO.Price,
+            ParentId = createDTO.ParentId,
             UnitId = createDTO.UnitId,
+            Pcs = createDTO.Pcs,
+            Mts = createDTO.Mts,
+            Tns = createDTO.Tns,
+            Children = new List<Material>(),
             RouteSteps = new List<MaterialRouteStep>()
         };
     }
 
-
+    // UpdateMaterialDTO → Обновление существующего Material
     public static void UpdateEntity(UpdateMaterialDTO updateDTO, Material material)
     {
         if (updateDTO == null)
@@ -62,20 +90,28 @@ public static class MaterialDTOTranslator
             throw new ArgumentNullException(nameof(material));
 
         // Обновляем только те поля, которые пришли (не null)
-        if (updateDTO.Name != null)
+        if (!string.IsNullOrEmpty(updateDTO.Code))
+            material.Code = updateDTO.Code;
+
+        if (!string.IsNullOrEmpty(updateDTO.Name))
             material.Name = updateDTO.Name;
 
         if (updateDTO.Description != null)
             material.Description = updateDTO.Description;
 
-        if (updateDTO.Quantity.HasValue)
-            material.Quantity = updateDTO.Quantity.Value;
-
-        if (updateDTO.Price.HasValue)
-            material.Price = updateDTO.Price.Value;
+        if (updateDTO.ParentId.HasValue)
+            material.ParentId = updateDTO.ParentId.Value;
 
         if (updateDTO.UnitId.HasValue)
             material.UnitId = updateDTO.UnitId.Value;
-    }
 
+        if (updateDTO.Pcs.HasValue)
+            material.Pcs = updateDTO.Pcs.Value;
+
+        if (updateDTO.Mts.HasValue)
+            material.Mts = updateDTO.Mts.Value;
+
+        if (updateDTO.Tns.HasValue)
+            material.Tns = updateDTO.Tns.Value;
+    }
 }

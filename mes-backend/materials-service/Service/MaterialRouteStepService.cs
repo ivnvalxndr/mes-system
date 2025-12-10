@@ -1,6 +1,4 @@
 ﻿using materials_service.DTO;
-using materials_service.Entities;
-using materials_service.Repositories;
 using materials_service.DTOTranslators;
 using materials_service.Repositories.Interfaces;
 using materials_service.Service.Interfaces;
@@ -35,14 +33,19 @@ public class MaterialRouteStepService : IMaterialRouteStepService
         return step != null ? MaterialRouteStepDTOTranslator.ToDTO(step) : null;
     }
 
-    public async Task<MaterialRouteStepDTO> UpdateStepAsync(int stepId, MaterialRouteStepDTO stepDTO)
+    public async Task<MaterialRouteStepDTO> UpdateStepAsync(int stepId, UpdateMaterialRouteStepDTO updateDTO)
     {
         var existing = await _repository.GetByIdAsync(stepId);
         if (existing == null)
             throw new KeyNotFoundException($"Route step with id {stepId} not found");
 
-        MaterialRouteStepDTOTranslator.UpdateEntity(stepDTO, existing);
+        // Преобразуем UpdateDTO в сущность
+        MaterialRouteStepDTOTranslator.UpdateEntity(updateDTO, existing);
+
+        // Сохраняем изменения
         var updated = await _repository.UpdateAsync(existing);
+
+        // Возвращаем полный DTO
         return MaterialRouteStepDTOTranslator.ToDTO(updated);
     }
 

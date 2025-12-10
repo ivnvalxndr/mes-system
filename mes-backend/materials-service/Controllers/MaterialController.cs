@@ -1,144 +1,311 @@
-﻿// materials-service/Controllers/MaterialsController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using materials_service.Data;
 using materials_service.DTO;
-using materials_service.Services;
-using materials_service.Service.Interfaces;
-
+using materials_service.Entities;
 namespace materials_service.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class MaterialsController : ControllerBase
+public class MaterialController : ControllerBase
 {
-    private readonly IMaterialsService _materialsService;
-    private readonly ILogger<MaterialsController> _logger;
+    private readonly MaterialDbContext _context;
 
-    public MaterialsController(
-        IMaterialsService materialsService,
-        ILogger<MaterialsController> logger)
+    public MaterialController(MaterialDbContext context)
     {
-        _materialsService = materialsService;
-        _logger = logger;
+        _context = context;
     }
 
     // GET: api/materials
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<IEnumerable<MaterialDTO>>> GetAll()
+    public async Task<ActionResult<IEnumerable<MaterialDTO>>> GetMaterials(
+        [FromQuery] int? parentId = null,
+        [FromQuery] bool includeChildren = false)
     {
-        try
+        IQueryable<Material> query = _context.Materials
+            .Include(m => m.Unit)
+            .Include(m => m.Parent);
+
+        if (parentId.HasValue)
         {
-            var materials = await _materialsService.GetAllMaterialsAsync();
-            return Ok(materials);
+            query = query.Where(m => m.ParentId == parentId);
         }
-        catch (Exception ex)
+        else if (!includeChildren)
         {
-            _logger.LogError(ex, "Error getting all materials");
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            // По умолчанию показываем только корневые элементы
+            query = query.Where(m => m.ParentId == null);
         }
+
+        if (includeChildren)
+        {
+            query = query.Include(m => m.Children);
+        }
+
+        var materials = await query.ToListAsync();
+        return Ok(materials.Select(m => MapToDto(m, includeChildren)));
     }
 
     // GET: api/materials/{id}
-    [HttpGet("{id:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<MaterialDTO>> GetById(int id)
+    [HttpGet("{id}")]
+    public async Task<ActionResult<MaterialDTO>> GetMaterial(int id)
     {
-        try
+        var material = await _context.Materials
+            .Include(m => m.Unit)
+            .Include(m => m.Parent)
+            .Include(m => m.Children)
+            .FirstOrDefaultAsync(m => m.Id == id);
+
+        if (material == null)
         {
-            var material = await _materialsService.GetMaterialByIdAsync(id);
-            if (material == null)
-            {
-                return NotFound(new { message = $"Material with id {id} not found" });
-            }
-            return Ok(material);
+            return NotFound();
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting material by id {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
-        }
+
+        return MapToDto(material, true);
     }
 
     // POST: api/materials
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<MaterialDTO>> Create([FromBody] CreateMaterialDTO createDTO)
+    public async Task<ActionResult<MaterialDTO>> CreateMaterial(CreateMaterialDTO createDto)
     {
-        try
+        // Проверка уникальности кода
+        if (await _context.Materials.AnyAsync(m => m.Code == createDto.Code))
         {
-            if (!ModelState.IsValid)
+            return BadRequest("Material with this code already exists");
+        }
+
+        // Проверка существования родителя
+        if (createDto.ParentId.HasValue)
+        {
+            var parentExists = await _context.Materials.AnyAsync(m => m.Id == createDto.ParentId);
+            if (!parentExists)
             {
-                return BadRequest(ModelState);
+                return BadRequest("Parent material not found");
             }
-
-            var material = await _materialsService.CreateMaterialAsync(createDTO);
-
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = material.Id },
-                material);
         }
-        catch (Exception ex)
+
+        // Проверка существования единицы измерения
+        var unitExists = await _context.Units.AnyAsync(u => u.Id == createDto.UnitId);
+        if (!unitExists)
         {
-            _logger.LogError(ex, "Error creating material");
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            return BadRequest("Unit not found");
         }
+
+        var material = new Material
+        {
+            Code = createDto.Code,
+            Name = createDto.Name,
+            Description = createDto.Description,
+            ParentId = createDto.ParentId,
+            UnitId = createDto.UnitId,
+            Pcs = createDto.Pcs,
+            Mts = createDto.Mts,
+            Tns = createDto.Tns
+        };
+
+        _context.Materials.Add(material);
+        await _context.SaveChangesAsync();
+
+        // Загружаем связанные данные для возврата
+        await _context.Entry(material)
+            .Reference(m => m.Unit)
+            .LoadAsync();
+        await _context.Entry(material)
+            .Reference(m => m.Parent)
+            .LoadAsync();
+
+        return CreatedAtAction(nameof(GetMaterial), new { id = material.Id }, MapToDto(material, false));
     }
 
     // PUT: api/materials/{id}
-    [HttpPut("{id:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<MaterialDTO>> Update(int id, [FromBody] UpdateMaterialDTO updateDTO)
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateMaterial(int id, UpdateMaterialDTO updateDto)
     {
-        try
+        var material = await _context.Materials.FindAsync(id);
+        if (material == null)
         {
-            if (!ModelState.IsValid)
+            return NotFound();
+        }
+
+        // Проверка уникальности кода (если изменился)
+        if (!string.IsNullOrEmpty(updateDto.Code) && updateDto.Code != material.Code)
+        {
+            if (await _context.Materials.AnyAsync(m => m.Code == updateDto.Code && m.Id != id))
             {
-                return BadRequest(ModelState);
+                return BadRequest("Material with this code already exists");
+            }
+            material.Code = updateDto.Code;
+        }
+
+        // Обновляем другие поля
+        if (!string.IsNullOrEmpty(updateDto.Name))
+            material.Name = updateDto.Name;
+
+        if (updateDto.Description != null)
+            material.Description = updateDto.Description;
+
+        if (updateDto.ParentId.HasValue)
+        {
+            // Проверка циклической зависимости
+            if (updateDto.ParentId == id)
+            {
+                return BadRequest("Material cannot be its own parent");
             }
 
-            var material = await _materialsService.UpdateMaterialAsync(id, updateDTO);
-            return Ok(material);
+            var parentExists = await _context.Materials.AnyAsync(m => m.Id == updateDto.ParentId);
+            if (!parentExists)
+            {
+                return BadRequest("Parent material not found");
+            }
+            material.ParentId = updateDto.ParentId;
         }
-        catch (KeyNotFoundException ex)
+        else if (updateDto.ParentId == 0) // Если хотим сделать корневым
         {
-            return NotFound(new { message = ex.Message });
+            material.ParentId = null;
         }
-        catch (Exception ex)
+
+        if (updateDto.UnitId.HasValue)
         {
-            _logger.LogError(ex, "Error updating material {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            var unitExists = await _context.Units.AnyAsync(u => u.Id == updateDto.UnitId);
+            if (!unitExists)
+            {
+                return BadRequest("Unit not found");
+            }
+            material.UnitId = updateDto.UnitId.Value;
         }
+
+        if (updateDto.Pcs.HasValue)
+            material.Pcs = updateDto.Pcs;
+
+        if (updateDto.Mts.HasValue)
+            material.Mts = updateDto.Mts;
+
+        if (updateDto.Tns.HasValue)
+            material.Tns = updateDto.Tns;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!MaterialExists(id))
+            {
+                return NotFound();
+            }
+            throw;
+        }
+
+        return NoContent();
     }
 
     // DELETE: api/materials/{id}
-    [HttpDelete("{id:int}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteMaterial(int id)
     {
-        try
+        var material = await _context.Materials
+            .Include(m => m.Children)
+            .FirstOrDefaultAsync(m => m.Id == id);
+
+        if (material == null)
         {
-            await _materialsService.DeleteMaterialAsync(id);
-            return NoContent();
+            return NotFound();
         }
-        catch (KeyNotFoundException ex)
+
+        // Проверяем, есть ли дочерние материалы
+        if (material.Children.Any())
         {
-            return NotFound(new { message = ex.Message });
+            return BadRequest("Cannot delete material with children. Delete children first.");
         }
-        catch (Exception ex)
+
+        // Проверяем, есть ли связанные шаги маршрута
+        var hasRouteSteps = await _context.MaterialRouteSteps.AnyAsync(r => r.MaterialId == id);
+        if (hasRouteSteps)
         {
-            _logger.LogError(ex, "Error deleting material {Id}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            return BadRequest("Cannot delete material with route steps. Delete route steps first.");
         }
+
+        _context.Materials.Remove(material);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // GET: api/materials/search?code={code}
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<MaterialSimpleDTO>>> SearchMaterials(
+        [FromQuery] string? code = null,
+        [FromQuery] string? name = null)
+    {
+        IQueryable<Material> query = _context.Materials;
+
+        if (!string.IsNullOrEmpty(code))
+        {
+            query = query.Where(m => m.Code.Contains(code));
+        }
+
+        if (!string.IsNullOrEmpty(name))
+        {
+            query = query.Where(m => m.Name.Contains(name));
+        }
+
+        var materials = await query
+            .Select(m => new MaterialSimpleDTO
+            {
+                Id = m.Id,
+                Code = m.Code,
+                Name = m.Name
+            })
+            .Take(20)
+            .ToListAsync();
+
+        return Ok(materials);
+    }
+
+    private bool MaterialExists(int id)
+    {
+        return _context.Materials.Any(e => e.Id == id);
+    }
+
+    private static MaterialDTO MapToDto(Material material, bool includeChildren)
+    {
+        var dto = new MaterialDTO
+        {
+            Id = material.Id,
+            Code = material.Code,
+            Name = material.Name,
+            Description = material.Description,
+            ParentId = material.ParentId,
+            UnitId = material.UnitId,
+            Pcs = material.Pcs,
+            Mts = material.Mts,
+            Tns = material.Tns,
+            Parent = material.Parent != null ? new MaterialSimpleDTO
+            {
+                Id = material.Parent.Id,
+                Code = material.Parent.Code,
+                Name = material.Parent.Name
+            } : null,
+            Unit = material.Unit != null ? new UnitDTO
+            {
+                Id = material.Unit.Id,
+                Code = material.Unit.Code,
+                Name = material.Unit.Name,
+                Description = material.Unit.Description,
+                Type = material.Unit.Type.ToString(),
+                Status = material.Unit.Status.ToString()
+            } : null
+        };
+
+        if (includeChildren && material.Children != null)
+        {
+            dto.Children = material.Children.Select(c => new MaterialSimpleDTO
+            {
+                Id = c.Id,
+                Code = c.Code,
+                Name = c.Name
+            }).ToList();
+        }
+
+        return dto;
     }
 }

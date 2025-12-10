@@ -1,41 +1,41 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using units_service.Entities.Enums;
 
-namespace units_service.DTO;
+namespace materials_service.DTO;
 
 public class UnitDTO
 {
     public int Id { get; set; }
+    public int Code { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+}
 
-    // Read-only
-    public string UnitNumber { get; set; } = string.Empty;
-    public UnitStatus Status { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
-    public string CreatedBy { get; set; } = string.Empty;
-
-    // For create/update
+public class CreateUnitDTO
+{
     [Required]
+    public int Code { get; set; }
+
+    [Required]
+    [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
+    [MaxLength(500)]
     public string Description { get; set; } = string.Empty;
 
     [Required]
-    public UnitType Type { get; set; }
+    public string Type { get; set; } = string.Empty;
+}
 
-    public string Model { get; set; } = string.Empty;
-    public string Manufacturer { get; set; } = string.Empty;
-    public string SerialNumber { get; set; } = string.Empty;
+public class UpdateUnitDTO
+{
+    [MaxLength(200)]
+    public string? Name { get; set; }
 
-    public DateTime InstallationDate { get; set; }
-    public DateTime? LastMaintenanceDate { get; set; }
-    public DateTime? NextMaintenanceDate { get; set; }
+    [MaxLength(500)]
+    public string? Description { get; set; }
 
-    [Range(0, 100)]
-    public decimal? CurrentLoad { get; set; }
-
-    public decimal? MaxCapacity { get; set; }
-    public string Location { get; set; } = string.Empty;
-
-    public int? CurrentProductionOrderId { get; set; }
+    public string? Type { get; set; }
+    public string? Status { get; set; }
 }

@@ -12,7 +12,7 @@ using materials_service.Data;
 namespace materials_service.Migrations
 {
     [DbContext(typeof(MaterialDbContext))]
-    [Migration("20251209140319_InitialCreate")]
+    [Migration("20251210121541_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -45,28 +45,45 @@ namespace materials_service.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
+                    b.Property<decimal?>("Mts")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("mts");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("price");
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("parent_id");
 
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,3)")
-                        .HasColumnName("quantity");
+                    b.Property<decimal?>("Pcs")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("pcs");
+
+                    b.Property<decimal?>("Tns")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("tns");
 
                     b.Property<int>("UnitId")
                         .HasColumnType("integer")
                         .HasColumnName("unit_id");
 
-                    b.HasKey("Id")
-                        .HasName("p_k_material");
+                    b.HasKey("Id");
 
-                    b.HasIndex("UnitId");
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_material_parent_id");
+
+                    b.HasIndex("UnitId")
+                        .HasDatabaseName("ix_material_unit_id");
 
                     b.ToTable("material");
                 });
@@ -96,19 +113,35 @@ namespace materials_service.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("material_id");
 
+                    b.Property<decimal?>("Mts")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("mts");
+
                     b.Property<string>("Notes")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("notes");
 
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,3)")
-                        .HasColumnName("quantity");
+                    b.Property<DateTime>("OperationDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("operation_date");
 
-                    b.Property<int>("StepType")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("Pcs")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("pcs");
+
+                    b.Property<string>("StepType")
+                        .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("step_type");
+
+                    b.Property<decimal?>("Tns")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)")
+                        .HasColumnName("tns");
 
                     b.Property<string>("ToLocation")
                         .IsRequired()
@@ -116,17 +149,21 @@ namespace materials_service.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("to_location");
 
-                    b.Property<string>("UnitId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                    b.Property<int?>("UnitId")
+                        .HasColumnType("integer")
                         .HasColumnName("unit_id");
 
-                    b.HasKey("Id")
-                        .HasName("p_k_material_rote_steps");
+                    b.HasKey("Id");
 
-                    b.HasIndex("MaterialId");
+                    b.HasIndex("MaterialId")
+                        .HasDatabaseName("ix_material_route_steps_material_id");
 
-                    b.ToTable("material_rote_steps");
+                    b.HasIndex("OperationDate");
+
+                    b.HasIndex("UnitId")
+                        .HasDatabaseName("ix_material_route_steps_unit_id");
+
+                    b.ToTable("material_route_steps");
                 });
 
             modelBuilder.Entity("units_service.Entities.Unit", b =>
@@ -138,112 +175,58 @@ namespace materials_service.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("Code")
+                    b.Property<int>("Code")
                         .HasColumnType("integer")
                         .HasColumnName("code");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("created_by");
-
-                    b.Property<decimal?>("CurrentLoad")
-                        .HasColumnType("numeric")
-                        .HasColumnName("current_load");
-
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("description");
-
-                    b.Property<DateTime>("InstallationDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("installation_date");
-
-                    b.Property<DateTime?>("LastMaintenanceDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_maintenance_date");
-
-                    b.Property<string>("Location")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("location");
-
-                    b.Property<string>("Manufacturer")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("manufacturer");
-
-                    b.Property<decimal?>("MaxCapacity")
-                        .HasColumnType("numeric")
-                        .HasColumnName("max_capacity");
-
-                    b.Property<string>("Model")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("model");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
-                    b.Property<DateTime?>("NextMaintenanceDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_maintenance_date");
-
-                    b.Property<string>("SerialNumber")
+                    b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("serial_number");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Available")
                         .HasColumnName("status");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("type");
 
-                    b.Property<string>("UnitNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("unit_number");
+                    b.HasKey("Id");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.HasKey("Id")
-                        .HasName("p_k_unit");
+                    b.HasIndex("Code")
+                        .IsUnique();
 
                     b.ToTable("unit");
                 });
 
             modelBuilder.Entity("Material", b =>
                 {
+                    b.HasOne("Material", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_material_material_parent_id");
+
                     b.HasOne("units_service.Entities.Unit", "Unit")
                         .WithMany()
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("f_k_material_unit_unit_id");
+                        .HasConstraintName("fk_material_unit_unit_id");
+
+                    b.Navigation("Parent");
 
                     b.Navigation("Unit");
                 });
@@ -255,13 +238,23 @@ namespace materials_service.Migrations
                         .HasForeignKey("MaterialId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("f_k_material_rote_steps_material_material_id");
+                        .HasConstraintName("fk_material_route_steps_material_material_id");
+
+                    b.HasOne("units_service.Entities.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_material_route_steps_unit_unit_id");
 
                     b.Navigation("Material");
+
+                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("Material", b =>
                 {
+                    b.Navigation("Children");
+
                     b.Navigation("RouteSteps");
                 });
 #pragma warning restore 612, 618

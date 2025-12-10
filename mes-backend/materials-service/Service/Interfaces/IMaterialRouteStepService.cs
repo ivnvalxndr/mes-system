@@ -7,7 +7,7 @@ public interface IMaterialRouteStepService
     Task<MaterialRouteStepDTO> CreateStepAsync(CreateMaterialRouteStepDTO createDTO);
     Task<IEnumerable<MaterialRouteStepDTO>> GetStepsByMaterialIdAsync(int materialId);
     Task<MaterialRouteStepDTO?> GetStepByIdAsync(int stepId);
-    Task<MaterialRouteStepDTO> UpdateStepAsync(int stepId, MaterialRouteStepDTO stepDTO);
+    Task<MaterialRouteStepDTO> UpdateStepAsync(int id, UpdateMaterialRouteStepDTO updateDTO);
     Task DeleteStepAsync(int stepId);
     Task<bool> StepExistsAsync(int stepId);
 }

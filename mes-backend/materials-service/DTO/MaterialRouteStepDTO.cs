@@ -1,36 +1,89 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using materials_service.Entities.Enums;
 
-namespace materials_service.DTO;
-
-// Для создания шага маршрута (без Id и CreatedAt)
-public class CreateMaterialRouteStepDTO
+namespace materials_service.DTO
 {
-    [Required]
-    public int MaterialId { get; set; }
+    // Полный DTO для шага маршрута (ответ)
+    public class MaterialRouteStepDTO
+    {
+        public int Id { get; set; }
+        public int MaterialId { get; set; }
+        public string StepType { get; set; } = string.Empty;
+        public string FromLocation { get; set; } = string.Empty;
+        public string ToLocation { get; set; } = string.Empty;
+        public int? UnitId { get; set; }
+        public DateTime OperationDate { get; set; }
+        public decimal? Pcs { get; set; }
+        public decimal? Mts { get; set; }
+        public decimal? Tns { get; set; }
+        public string Notes { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
 
-    [Required]
-    public MaterialRouteStepType StepType { get; set; }
+        public MaterialSimpleDTO? Material { get; set; }
+        public UnitDTO? Unit { get; set; }
+    }
 
-    [Required]
-    public string FromLocation { get; set; } = string.Empty;
+    // DTO для создания шага маршрута (запрос)
+    public class CreateMaterialRouteStepDTO
+    {
+        [Required]
+        public int MaterialId { get; set; }
 
-    [Required]
-    public string ToLocation { get; set; } = string.Empty;
+        [Required]
+        public string StepType { get; set; } = string.Empty;
 
-    [Required]
-    [Range(0.01, double.MaxValue, ErrorMessage = "Quantity must be greater than 0")]
-    public decimal Quantity { get; set; }
+        [Required]
+        [MaxLength(200)]
+        public string FromLocation { get; set; } = string.Empty;
 
-    public string? UnitId { get; set; }
+        [Required]
+        [MaxLength(200)]
+        public string ToLocation { get; set; } = string.Empty;
 
-    [MaxLength(1000)]
-    public string Notes { get; set; } = string.Empty;
-}
+        public int? UnitId { get; set; }
 
-// Для чтения/обновления шага маршрута
-public class MaterialRouteStepDTO : CreateMaterialRouteStepDTO
-{
-    public int Id { get; set; }
-    public DateTime CreatedAt { get; set; }
+        [Required]
+        public DateTime OperationDate { get; set; }
+
+        public decimal? Pcs { get; set; }
+        public decimal? Mts { get; set; }
+        public decimal? Tns { get; set; }
+
+        [MaxLength(1000)]
+        public string Notes { get; set; } = string.Empty;
+    }
+
+    // DTO для обновления шага маршрута (запрос)
+    public class UpdateMaterialRouteStepDTO
+    {
+        public string? StepType { get; set; }
+
+        [MaxLength(200)]
+        public string? FromLocation { get; set; }
+
+        [MaxLength(200)]
+        public string? ToLocation { get; set; }
+
+        public int? UnitId { get; set; }
+
+        public DateTime? OperationDate { get; set; }
+
+        public decimal? Pcs { get; set; }
+        public decimal? Mts { get; set; }
+        public decimal? Tns { get; set; }
+
+        [MaxLength(1000)]
+        public string? Notes { get; set; }
+    }
+
+    // Простой DTO для шага маршрута (используется в списках)
+    public class MaterialRouteStepSimpleDTO
+    {
+        public int Id { get; set; }
+        public int MaterialId { get; set; }
+        public string StepType { get; set; } = string.Empty;
+        public string FromLocation { get; set; } = string.Empty;
+        public string ToLocation { get; set; } = string.Empty;
+        public DateTime OperationDate { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
 }

@@ -2,9 +2,9 @@
 
 public enum MaterialRouteStepType
 {
-    Incoming,      // Поступление
-    Processing,    // Обработка
-    Transfer,      // Перемещение
-    Shipping,      // Отгрузка
-    Return         // Возврат
+    Receipt,        // Поступление
+    Transfer,       // Перемещение
+    Consumption,    // Расход
+    Return,         // Возврат
+    WriteOff        // Списание
 }
