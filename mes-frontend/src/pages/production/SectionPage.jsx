@@ -1,6 +1,6 @@
-// pages/ProductionPage.jsx - ОБНОВЛЕННАЯ ВЕРСИЯ
-import React, { useState } from 'react';
-import { Routes, Route, useParams, useNavigate } from 'react-router-dom';
+// pages/production/SectionPage.jsx
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Grid,
@@ -19,83 +19,29 @@ import {
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 
-// Данные для участков (совпадают с Sidebar)
-const sectionsData = {
-  uto1: {
-    id: 'uto1',
-    name: 'УТО1',
-    description: 'Узел транспортного оборудования 1',
-    loadingPocket: [
-      { id: 1, material: 'Труба 57х3.5', quantity: 50, unit: 'шт' },
-      { id: 2, material: 'Труба 76х4', quantity: 30, unit: 'шт' },
-    ],
-    outputPocket: [
-      { id: 1, material: 'Готовые узлы', quantity: 15, unit: 'шт' },
-    ],
-    defectPocket: [
-      { id: 1, material: 'Труба 108х4', quantity: 2, reason: 'Коррозия' },
-    ],
-  },
-  uto2: {
-    id: 'uto2',
-    name: 'УТО2',
-    description: 'Узел транспортного оборудования 2',
-    loadingPocket: [
-      { id: 1, material: 'Труба 89х4', quantity: 40, unit: 'шт' },
-    ],
-    outputPocket: [
-      { id: 1, material: 'Готовые изделия', quantity: 22, unit: 'шт' },
-    ],
-    defectPocket: [
-      { id: 1, material: 'Труба 76х4', quantity: 3, reason: 'Трещина' },
-    ],
-  },
-  // Добавьте остальные участки...
-};
-
-// Обзор всех участков
-function ProductionOverview() {
-  const navigate = useNavigate();
-  const sections = Object.values(sectionsData);
-
-  return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom fontWeight="bold">
-        Производственные участки
-      </Typography>
-      
-      <Grid container spacing={3}>
-        {sections.map((section) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={section.id}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  {section.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  {section.description}
-                </Typography>
-                <Button 
-                  variant="outlined" 
-                  fullWidth
-                  onClick={() => navigate(`/production/${section.id}`)}
-                >
-                  Перейти к участку
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </Container>
-  );
-}
-
-// Страница конкретного участка
 function SectionPage() {
   const { sectionId } = useParams();
   const navigate = useNavigate();
-  const section = sectionsData[sectionId] || sectionsData.uto1;
+
+  // Простые данные для теста
+  const sectionData = {
+    uto1: {
+      name: 'УТО1',
+      description: 'Узел транспортного оборудования 1',
+      loading: [
+        { id: 1, material: 'Труба 57х3.5', quantity: 50, unit: 'шт' },
+        { id: 2, material: 'Труба 76х4', quantity: 30, unit: 'шт' },
+      ],
+      output: [
+        { id: 1, material: 'Готовые узлы', quantity: 15, unit: 'шт' },
+      ],
+      defects: [
+        { id: 1, material: 'Труба 108х4', quantity: 2, reason: 'Коррозия' },
+      ],
+    },
+  };
+
+  const section = sectionData[sectionId] || sectionData.uto1;
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -106,7 +52,7 @@ function SectionPage() {
           onClick={() => navigate('/production')}
           sx={{ mb: 2 }}
         >
-          Назад к списку
+          Назад
         </Button>
         <Typography variant="h4" fontWeight="bold">
           {section.name}
@@ -116,15 +62,15 @@ function SectionPage() {
         </Typography>
       </Box>
 
-      {/* Структура участка */}
+      {/* Основной макет */}
       <Grid container spacing={3}>
         {/* Загрузочный карман (30%) */}
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 3, height: '100%' }}>
+          <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom color="primary">
               Загрузочный карман
             </Typography>
-            {section.loadingPocket.map((item) => (
+            {section.loading.map((item) => (
               <Card key={item.id} sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography fontWeight="bold">{item.material}</Typography>
@@ -155,7 +101,7 @@ function SectionPage() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {section.outputPocket.map((item) => (
+                      {section.output.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell>{item.material}</TableCell>
                           <TableCell align="right">
@@ -176,7 +122,7 @@ function SectionPage() {
                   Карман брака
                 </Typography>
                 <Grid container spacing={2}>
-                  {section.defectPocket.map((item) => (
+                  {section.defects.map((item) => (
                     <Grid item xs={12} md={6} key={item.id}>
                       <Card>
                         <CardContent>
@@ -200,14 +146,4 @@ function SectionPage() {
   );
 }
 
-// Главный компонент
-function ProductionPage() {
-  return (
-    <Routes>
-      <Route index element={<ProductionOverview />} />
-      <Route path=":sectionId" element={<SectionPage />} />
-    </Routes>
-  );
-}
-
-export default ProductionPage;
+export default SectionPage;

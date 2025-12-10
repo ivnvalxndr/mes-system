@@ -1,4 +1,4 @@
-// components/Layout/Sidebar.jsx - ЗАМЕНИТЕ НА ЭТОТ КОД
+// components/Layout/SidebarWithDropdown.jsx - СОЗДАЙТЕ НОВЫЙ ФАЙЛ
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -24,12 +24,12 @@ import {
 
 const drawerWidth = 240;
 
-function Sidebar() {
+function SidebarWithDropdown() {
   const navigate = useNavigate();
   const location = useLocation();
   const [productionOpen, setProductionOpen] = useState(false);
 
-  // Простой список участков
+  // Список участков
   const productionSections = [
     { id: 'uto1', name: 'УТО1' },
     { id: 'uto2', name: 'УТО2' },
@@ -43,7 +43,7 @@ function Sidebar() {
     { id: 'nmk2', name: 'НМК 2' },
   ];
 
-  // Автоматически открываем меню если на странице производства
+  // Автоматически открываем если на странице production
   useEffect(() => {
     if (location.pathname.startsWith('/production')) {
       setProductionOpen(true);
@@ -86,23 +86,13 @@ function Sidebar() {
       
       <List>
         {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          const isProductionActive = location.pathname.startsWith('/production');
-          
-          // Раздел Производство с выпадающим списком
           if (item.text === 'Производство') {
             return (
               <React.Fragment key={item.text}>
                 <ListItem disablePadding>
                   <ListItemButton
-                    selected={isProductionActive}
                     onClick={() => setProductionOpen(!productionOpen)}
-                    sx={{
-                      py: 1.5,
-                      '&.Mui-selected': {
-                        backgroundColor: 'rgba(255,255,255,0.1)',
-                      },
-                    }}
+                    sx={{ py: 1.5 }}
                   >
                     <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
                       {item.icon}
@@ -112,7 +102,6 @@ function Sidebar() {
                   </ListItemButton>
                 </ListItem>
                 
-                {/* Выпадающий список участков */}
                 <Collapse in={productionOpen} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
                     {/* Обзор производства */}
@@ -126,7 +115,7 @@ function Sidebar() {
                       </ListItemButton>
                     </ListItem>
                     
-                    {/* Все участки */}
+                    {/* Участки */}
                     {productionSections.map((section) => (
                       <ListItem key={section.id} disablePadding>
                         <ListItemButton
@@ -144,18 +133,12 @@ function Sidebar() {
             );
           }
           
-          // Обычные пункты меню
           return (
             <ListItem key={item.text} disablePadding>
               <ListItemButton
-                selected={isActive}
+                selected={location.pathname === item.path}
                 onClick={() => navigate(item.path)}
-                sx={{
-                  py: 1.5,
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                  },
-                }}
+                sx={{ py: 1.5 }}
               >
                 <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
                   {item.icon}
@@ -170,4 +153,4 @@ function Sidebar() {
   );
 }
 
-export default Sidebar;
+export default SidebarWithDropdown;

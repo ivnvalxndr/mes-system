@@ -13,6 +13,8 @@ import DashboardPage from './pages/DashboardPage';
 import MaterialsPage from './pages/MaterialsPage';
 import ProductionPage from './pages/ProductionPage';
 import WarehousesPage from './pages/WarehousesPage';
+import SidebarEnhanced from './components/Layout/SidebarEnhanced';
+import SidebarWithDropdown from './components/Layout/SidebarWithDropdown';
 
 // Создаем тему
 const theme = createTheme({
@@ -45,8 +47,17 @@ function App() {
                 <Routes>
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/materials" element={<MaterialsPage />} />
-                  <Route path="/production" element={<ProductionPage />} />
+                  <Route path="/production/*" element={<ProductionPage />} />
                   <Route path="/warehouses" element={<WarehousesPage />} />
+				  <Route path="/test-sidebar" element={
+  <div style={{ display: 'flex' }}>
+    <SidebarWithDropdown />
+    <div style={{ flexGrow: 1, padding: '20px' }}>
+      <h1>Тест SidebarWithDropdown</h1>
+      <p>Если видите сайдбар слева - он работает!</p>
+    </div>
+  </div>
+} />
                 </Routes>
               </main>
             </div>

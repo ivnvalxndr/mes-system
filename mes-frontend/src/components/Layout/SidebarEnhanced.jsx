@@ -1,4 +1,4 @@
-// components/Layout/Sidebar.jsx - ЗАМЕНИТЕ НА ЭТОТ КОД
+// components/Layout/SidebarEnhanced.jsx - СОЗДАЕМ ОТДЕЛЬНЫЙ ФАЙЛ
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -20,30 +20,23 @@ import {
   Settings as SettingsIcon,
   ExpandLess,
   ExpandMore,
+  Forklift as UTOIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 240;
 
-function Sidebar() {
+// Простой список участков
+const productionSections = [
+  { id: 'uto1', name: 'УТО1' },
+  { id: 'uto2', name: 'УТО2' },
+];
+
+function SidebarEnhanced() {
   const navigate = useNavigate();
   const location = useLocation();
   const [productionOpen, setProductionOpen] = useState(false);
 
-  // Простой список участков
-  const productionSections = [
-    { id: 'uto1', name: 'УТО1' },
-    { id: 'uto2', name: 'УТО2' },
-    { id: 'loading1', name: 'Загрузка 1' },
-    { id: 'loading2', name: 'Загрузка 2' },
-    { id: 'sorting1', name: 'Сортировка 1' },
-    { id: 'sorting2', name: 'Сортировка 2' },
-    { id: 'packing1', name: 'Упаковка 1' },
-    { id: 'packing2', name: 'Упаковка 2' },
-    { id: 'nmk1', name: 'НМК 1' },
-    { id: 'nmk2', name: 'НМК 2' },
-  ];
-
-  // Автоматически открываем меню если на странице производства
+  // Автоматически открываем если на странице production
   useEffect(() => {
     if (location.pathname.startsWith('/production')) {
       setProductionOpen(true);
@@ -83,13 +76,12 @@ function Sidebar() {
         </p>
       </Box>
       <Divider sx={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
-      
-      <List>
+      <List sx={{ py: 0 }}>
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;
           const isProductionActive = location.pathname.startsWith('/production');
           
-          // Раздел Производство с выпадающим списком
+          // Раздел Производство с подменю
           if (item.text === 'Производство') {
             return (
               <React.Fragment key={item.text}>
@@ -112,7 +104,7 @@ function Sidebar() {
                   </ListItemButton>
                 </ListItem>
                 
-                {/* Выпадающий список участков */}
+                {/* Подменю участков */}
                 <Collapse in={productionOpen} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
                     {/* Обзор производства */}
@@ -122,11 +114,14 @@ function Sidebar() {
                         onClick={() => navigate('/production')}
                         sx={{ pl: 4, py: 1 }}
                       >
-                        <ListItemText primary="Обзор производства" />
+                        <ListItemText 
+                          primary="Обзор производства" 
+                          primaryTypographyProps={{ fontSize: '0.9rem' }}
+                        />
                       </ListItemButton>
                     </ListItem>
                     
-                    {/* Все участки */}
+                    {/* Участки */}
                     {productionSections.map((section) => (
                       <ListItem key={section.id} disablePadding>
                         <ListItemButton
@@ -134,7 +129,13 @@ function Sidebar() {
                           onClick={() => navigate(`/production/${section.id}`)}
                           sx={{ pl: 4, py: 1 }}
                         >
-                          <ListItemText primary={section.name} />
+                          <ListItemIcon sx={{ color: 'white', minWidth: 35 }}>
+                            <UTOIcons fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={section.name} 
+                            primaryTypographyProps={{ fontSize: '0.9rem' }}
+                          />
                         </ListItemButton>
                       </ListItem>
                     ))}
@@ -170,4 +171,4 @@ function Sidebar() {
   );
 }
 
-export default Sidebar;
+export default SidebarEnhanced;
