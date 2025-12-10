@@ -1,9 +1,7 @@
-﻿// materials-service/DTO/MaterialDTO.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace materials_service.DTO;
 
-// Для создания материала (POST)
 public class CreateMaterialDTO
 {
     [Required]
@@ -18,7 +16,7 @@ public class CreateMaterialDTO
     public string? Description { get; set; }
 
     [Required]
-    [Range(0, double.MaxValue)]
+    [Range(0.001, double.MaxValue)]
     public decimal Quantity { get; set; }
 
     [Required]
@@ -29,7 +27,6 @@ public class CreateMaterialDTO
     public int UnitId { get; set; }
 }
 
-// Для обновления материала (PUT/PATCH)
 public class UpdateMaterialDTO
 {
     [MaxLength(200)]
@@ -38,7 +35,7 @@ public class UpdateMaterialDTO
     [MaxLength(500)]
     public string? Description { get; set; }
 
-    [Range(0, double.MaxValue)]
+    [Range(0.001, double.MaxValue)]
     public decimal? Quantity { get; set; }
 
     [Range(0, double.MaxValue)]
@@ -47,16 +44,9 @@ public class UpdateMaterialDTO
     public int? UnitId { get; set; }
 }
 
-// Для чтения материала (GET)
-public class MaterialDTO
+public class MaterialDTO : CreateMaterialDTO
 {
     public int Id { get; set; }
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public decimal Quantity { get; set; }
-    public decimal Price { get; set; }
-    public int UnitId { get; set; }
-    public string UnitName { get; set; } = string.Empty;
+    public decimal TotalValue { get; set; }
     public List<MaterialRouteStepDTO> RouteSteps { get; set; } = new();
 }

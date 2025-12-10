@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using materials_service.Entities.Enums;
 
 namespace materials_service.Entities;
 
+[Table("material_rote_steps")]
 public class MaterialRouteStep
 {
     [Key]

@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using units_service.Entities.Enums;
 
 namespace units_service.Entities;
 
+[Table("unit")]
 public class Unit
 {
     [Key]
@@ -34,10 +36,8 @@ public class Unit
 
     public string Location { get; set; } = string.Empty;
 
-    // Связь с Production Order (если используется)
-    public int? CurrentProductionOrderId { get; set; }
-
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public string CreatedBy { get; set; } = string.Empty;
+    public int? Code { get; set; }
 }

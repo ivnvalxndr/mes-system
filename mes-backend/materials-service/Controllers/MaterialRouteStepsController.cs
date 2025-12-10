@@ -221,10 +221,10 @@ public class MaterialRouteStepsController : ControllerBase
             }
 
             if (patchData.ContainsKey("fromLocation"))
-                updateDTO.FromLocation = patchData["fromLocation"].ToString();
+                updateDTO.FromLocation = patchData["fromLocation"].ToString()!;
 
             if (patchData.ContainsKey("toLocation"))
-                updateDTO.ToLocation = patchData["toLocation"].ToString();
+                updateDTO.ToLocation = patchData["toLocation"].ToString()!;
 
             if (patchData.ContainsKey("quantity") && decimal.TryParse(patchData["quantity"].ToString(), out var quantity))
                 updateDTO.Quantity = quantity;
@@ -233,7 +233,7 @@ public class MaterialRouteStepsController : ControllerBase
                 updateDTO.UnitId = patchData["unitId"].ToString();
 
             if (patchData.ContainsKey("notes"))
-                updateDTO.Notes = patchData["notes"].ToString();
+                updateDTO.Notes = patchData["notes"].ToString()!;
 
             var updatedStep = await _stepService.UpdateStepAsync(stepId, updateDTO);
             return Ok(updatedStep);

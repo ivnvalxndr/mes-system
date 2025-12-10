@@ -3,3 +3,11 @@ http://localhost:5000/swagger/v1/swagger.json -o swagger.json
 
 Миграции
 Update-Database -Verbose
+
+Add-Migration InitialCreate
+
+Add-Migration AddProductionMaterials -Verbose
+
+
+# Удали старые миграции
+Remove-Migration -Force
