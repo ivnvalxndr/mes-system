@@ -6,7 +6,6 @@ namespace materials_service.DTOTranslators;
 
 public static class UnitDTOTranslator
 {
-    // Unit → UnitDTO
     public static UnitDTO ToDTO(Unit unit)
     {
         if (unit == null)
@@ -15,7 +14,7 @@ public static class UnitDTOTranslator
         return new UnitDTO
         {
             Id = unit.Id,
-            Code = unit.Code,
+            Code = unit.Code.ToString(),
             Name = unit.Name,
             Description = unit.Description,
             Type = unit.Type.ToString(),
@@ -40,7 +39,7 @@ public static class UnitDTOTranslator
 
         return new Unit
         {
-            Code = createDTO.Code,
+            Code = Convert.ToInt32(createDTO.Code),
             Name = createDTO.Name,
             Description = createDTO.Description,
             Type = unitType,

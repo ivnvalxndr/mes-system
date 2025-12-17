@@ -31,9 +31,11 @@ namespace materials_service
             builder.Services.AddScoped<IMaterialsService, MaterialsService>();
             builder.Services.AddScoped<IMaterialRouteStepRepository, MaterialRouteStepRepository>();
             builder.Services.AddScoped<IMaterialRouteStepService, MaterialRouteStepService>();
+            builder.Services.AddScoped<IUnitService, UnitService>();
+            builder.Services.AddScoped<IUnitRepository, UnitRepository>();
 
             // Add JWT Authentication 
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            /*builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
@@ -47,7 +49,7 @@ namespace materials_service
                         IssuerSigningKey = new SymmetricSecurityKey(
                             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
                     };
-                });
+                });*/
 
             builder.Services.AddCors(options =>
             {

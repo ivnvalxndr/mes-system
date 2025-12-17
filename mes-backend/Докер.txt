@@ -1,3 +1,7 @@
+
+
+docker-compose up -d materials-service
+
 docker-compose down auth-service
 docker-compose up -d --build auth-service
 

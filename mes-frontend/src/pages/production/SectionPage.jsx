@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { warehouseService } from '../../services/warehouseService.js';
 import {
   Container,
   Grid,
@@ -85,9 +86,10 @@ function WarehouseDialog({ open, onClose, onSelectMaterial }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null); 
 
   // Mock данные для склада (замените на реальный API)
-  const mockWarehouseMaterials = [
+  /*const mockWarehouseMaterials = [
     { id: 101, name: 'Труба 57×3.5', code: 'TP-001', type: 'Труба', quantity: 150, unit: 'шт.', specifications: { diameter: 57, thickness: 3.5, length: 6 } },
     { id: 102, name: 'Труба 76×4', code: 'TP-002', type: 'Труба', quantity: 80, unit: 'шт.', specifications: { diameter: 76, thickness: 4, length: 6 } },
     { id: 103, name: 'Труба 89×4', code: 'TP-003', type: 'Труба', quantity: 45, unit: 'шт.', specifications: { diameter: 89, thickness: 4, length: 6 } },
@@ -95,20 +97,74 @@ function WarehouseDialog({ open, onClose, onSelectMaterial }) {
     { id: 105, name: 'Труба 133×4.5', code: 'TP-005', type: 'Труба', quantity: 25, unit: 'шт.', specifications: { diameter: 133, thickness: 4.5, length: 6 } },
     { id: 106, name: 'Уголок 50×50×5', code: 'UG-001', type: 'Металлопрокат', quantity: 120, unit: 'шт.', specifications: { width: 50, height: 50, thickness: 5, length: 6 } },
     { id: 107, name: 'Лист стальной 2мм', code: 'LS-001', type: 'Лист', quantity: 25, unit: 'лист', specifications: { thickness: 2, width: 1500, length: 3000 } },
-  ];
+  ];*/
 
   // Загрузка материалов при открытии диалога
   useEffect(() => {
-    if (open) {
-      setLoading(true);
-      // Имитация загрузки с API
-      setTimeout(() => {
-        setMaterials(mockWarehouseMaterials);
-        setFilteredMaterials(mockWarehouseMaterials);
-        setLoading(false);
-      }, 500);
-    }
-  }, [open]);
+	  if (open) {
+		fetchMaterials();
+	  } else {
+		// Сброс при закрытии
+		setMaterials([]);
+		setFilteredMaterials([]);
+		setSearch('');
+	  }
+	}, [open]);
+	
+	const fetchMaterials = async () => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    console.log('Загрузка материалов...');
+    const apiMaterials = await warehouseService.getAvailableMaterials();
+    console.log('Сырые данные API:', apiMaterials);
+    
+    // ПРАВИЛЬНОЕ ФОРМАТИРОВАНИЕ:
+    const formattedMaterials = apiMaterials.map(item => {
+      // ВАЖНО: преобразуем unit объект в строку
+      let unitText = 'шт.';
+      if (item.unit) {
+        if (typeof item.unit === 'string') {
+          unitText = item.unit;
+        } else if (typeof item.unit === 'object') {
+          unitText = item.unit.name || item.unit.code || 'шт.';
+        }
+      }
+      
+      return {
+        id: item.id,
+        name: item.name,
+        code: item.code?.toString() || `MAT-${item.id}`,
+        type: item.parentId ? 'Деталь' : 'Материал',
+        quantity: item.pcs || item.quantity || 0,
+        unit: unitText, // Теперь ЭТО СТРОКА!
+        description: item.description || '',
+        // Сохраняем оригинальный объект отдельно если нужно
+        unitObject: item.unit,
+        ...item
+      };
+    });
+    
+    console.log('Отформатированные (unit как строка):', formattedMaterials);
+    setMaterials(formattedMaterials);
+    setFilteredMaterials(formattedMaterials);
+    
+  } catch (error) {
+    console.error('Ошибка загрузки:', error);
+    setError(`Ошибка: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Вспомогательная функция для извлечения чисел из текста
+const extractNumber = (text, keyword) => {
+  if (!text) return null;
+  const regex = new RegExp(`${keyword}\\s*[=:]?\\s*(\\d+(?:\\.\\d+)?)`, 'i');
+  const match = text.match(regex);
+  return match ? parseFloat(match[1]) : null;
+};
 
   // Фильтрация по поиску
   useEffect(() => {
@@ -222,7 +278,10 @@ function WarehouseDialog({ open, onClose, onSelectMaterial }) {
                                 {material.quantity}
                               </Typography>
                               <Typography variant="caption">
-                                {material.unit}
+                                {/* Безопасный рендеринг */}
+								  {typeof material.unit === 'string' 
+									? material.unit 
+									: (material.unit?.name || material.unit?.code || 'шт.')}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -520,7 +579,7 @@ function SectionPage() {
                 startIcon={<AddIcon />}
                 onClick={handleOpenWarehouseDialog}
               >
-                Добавить со склада
+                Зарегистрировать пакет
               </Button>
               <Button 
                 variant="outlined"

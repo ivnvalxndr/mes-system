@@ -306,7 +306,7 @@ public class MaterialRouteStepsController : ControllerBase
             Unit = step.Unit != null ? new UnitDTO
             {
                 Id = step.Unit.Id,
-                Code = step.Unit.Code,
+                Code = step.Unit.Code.ToString(),
                 Name = step.Unit.Name,
                 Description = step.Unit.Description,
                 Type = step.Unit.Type.ToString(),

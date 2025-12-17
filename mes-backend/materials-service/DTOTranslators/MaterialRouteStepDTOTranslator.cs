@@ -37,7 +37,7 @@ public static class MaterialRouteStepDTOTranslator
                 new UnitDTO
                 {
                     Id = routeStep.Unit.Id,
-                    Code = routeStep.Unit.Code,
+                    Code = routeStep.Unit.Code.ToString(),
                     Name = routeStep.Unit.Name,
                     Description = routeStep.Unit.Description,
                     Type = routeStep.Unit.Type.ToString(),

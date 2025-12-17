@@ -1,11 +1,12 @@
 ﻿using materials_service.DTO;
 using materials_service.Entities;
+using units_service.Entities.Enums;
+using units_service.Entities;
 
 namespace materials_service.DTOTranslators;
 
 public static class MaterialDTOTranslator
 {
-    // Material → MaterialDTO
     public static MaterialDTO ToDTO(Material material)
     {
         if (material == null)
@@ -113,5 +114,47 @@ public static class MaterialDTOTranslator
 
         if (updateDTO.Tns.HasValue)
             material.Tns = updateDTO.Tns.Value;
+    }
+
+    public static UnitDTO ToDTO(Unit unit)
+    {
+        if (unit == null) return null!;
+
+        return new UnitDTO
+        {
+            Id = unit.Id,
+            Code = unit.Code.ToString(),
+            Name = unit.Name,
+            Description = unit.Description,
+            Type = unit.Type.ToString(),
+            Status = unit.Status.ToString()
+        };
+    }
+
+    public static Unit ToEntity(CreateUnitDTO dto)
+    {
+        return new Unit
+        {
+            Code = Convert.ToInt32(dto.Code),
+            Name = dto.Name,
+            Description = dto.Description!,
+            Type = Enum.Parse<UnitType>(dto.Type),
+            Status = UnitStatus.Available // Используем Available как в модели
+        };
+    }
+
+    public static void UpdateEntity(UpdateUnitDTO dto, Unit entity)
+    {
+        if (!string.IsNullOrEmpty(dto.Name))
+            entity.Name = dto.Name;
+
+        if (dto.Description != null)
+            entity.Description = dto.Description;
+
+        if (!string.IsNullOrEmpty(dto.Type))
+            entity.Type = Enum.Parse<UnitType>(dto.Type);
+
+        if (!string.IsNullOrEmpty(dto.Status))
+            entity.Status = Enum.Parse<UnitStatus>(dto.Status);
     }
 }
