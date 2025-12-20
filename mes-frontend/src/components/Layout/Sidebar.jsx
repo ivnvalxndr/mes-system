@@ -31,16 +31,10 @@ function Sidebar() {
 
   // Простой список участков
   const productionSections = [
-    { id: 'uto1', name: 'УТО1' },
-    { id: 'uto2', name: 'УТО2' },
-    { id: 'loading1', name: 'Загрузка 1' },
-    { id: 'loading2', name: 'Загрузка 2' },
-    { id: 'sorting1', name: 'Сортировка 1' },
-    { id: 'sorting2', name: 'Сортировка 2' },
-    { id: 'packing1', name: 'Упаковка 1' },
-    { id: 'packing2', name: 'Упаковка 2' },
-    { id: 'nmk1', name: 'НМК 1' },
-    { id: 'nmk2', name: 'НМК 2' },
+    { id: 'loading1', name: 'Загрузка труб' },
+    { id: 'sorting1', name: 'Сортировка' },
+    { id: 'packing1', name: 'Упаковка' },
+    { id: 'nmk1', name: 'НМК' },
   ];
 
   // Автоматически открываем меню если на странице производства

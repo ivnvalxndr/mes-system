@@ -1,8 +1,6 @@
 import axios from 'axios';
 
 // Используйте HTTP для локальной разработки
-//const API_URL = 'https://localhost:5002/api'; // или порт вашего C# API
-// Или если ваш API на 7086:
 const API_URL = 'https://localhost:7086/api';
 
 const api = axios.create({
@@ -20,7 +18,7 @@ export const warehouseService = {
     try {
       console.log('Попытка запроса к API...');
       
-      // Вариант 1: Основной endpoint (множественное число)
+      // Рабочий endpoint
       const response = await api.get('/material');
       
       console.log('✅ API запрос успешен!');
@@ -44,104 +42,143 @@ export const warehouseService = {
       console.error('Статус:', error.response?.status);
       console.error('Данные ошибки:', error.response?.data);
       
-      // Попробуем альтернативный endpoint (единственное число)
-      console.log('Пробую альтернативный endpoint /Material...');
+      // Возвращаем качественные тестовые данные для разработки
+      console.log('Использую тестовые данные для разработки');
       
-      try {
-        const altResponse = await api.get('/Material');
-        
-        console.log('✅ Альтернативный endpoint сработал!');
-        return altResponse.data;
-        
-      } catch (altError) {
-        console.error('Альтернативный endpoint тоже не сработал');
-        
-        // Возвращаем качественные тестовые данные для разработки
-        console.log('Использую тестовые данные для разработки');
-        
-        return [
-          { 
+      return [
+        { 
+          id: 1, 
+          name: 'Труба 57×3.5', 
+          code: 'TP-001', 
+          pcs: 150, 
+          unit: { 
             id: 1, 
-            name: 'Труба 57×3.5', 
-            code: 'TP-001', 
-            pcs: 150, 
-            unit: { 
-              id: 1, 
-              name: 'шт.', 
-              code: 'PCS' 
-            }, 
-            description: 'Труба стальная 57×3.5, длина 6м',
-            parentId: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          { 
-            id: 2, 
-            name: 'Труба 76×4', 
-            code: 'TP-002', 
-            pcs: 80, 
-            unit: { 
-              id: 1, 
-              name: 'шт.', 
-              code: 'PCS' 
-            }, 
-            description: 'Труба стальная 76×4, длина 6м',
-            parentId: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          { 
-            id: 3, 
-            name: 'Труба 89×4', 
-            code: 'TP-003', 
-            pcs: 45, 
-            unit: { 
-              id: 1, 
-              name: 'шт.', 
-              code: 'PCS' 
-            }, 
-            description: 'Труба стальная 89×4, длина 6м',
-            parentId: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          { 
-            id: 4, 
-            name: 'Труба 108×4', 
-            code: 'TP-004', 
-            pcs: 30, 
-            unit: { 
-              id: 1, 
-              name: 'шт.', 
-              code: 'PCS' 
-            }, 
-            description: 'Труба стальная 108×4, длина 6м',
-            parentId: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          { 
-            id: 5, 
-            name: 'Труба 133×4.5', 
-            code: 'TP-005', 
-            pcs: 25, 
-            unit: { 
-              id: 1, 
-              name: 'шт.', 
-              code: 'PCS' 
-            }, 
-            description: 'Труба стальная 133×4.5, длина 6м',
-            parentId: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ];
-      }
+            name: 'шт.', 
+            code: 'PCS' 
+          }, 
+          description: 'Труба стальная 57×3.5, длина 6м',
+          parentId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        { 
+          id: 2, 
+          name: 'Труба 76×4', 
+          code: 'TP-002', 
+          pcs: 80, 
+          unit: { 
+            id: 1, 
+            name: 'шт.', 
+            code: 'PCS' 
+          }, 
+          description: 'Труба стальная 76×4, длина 6м',
+          parentId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        { 
+          id: 3, 
+          name: 'Труба 89×4', 
+          code: 'TP-003', 
+          pcs: 45, 
+          unit: { 
+            id: 1, 
+            name: 'шт.', 
+            code: 'PCS' 
+          }, 
+          description: 'Труба стальная 89×4, длина 6м',
+          parentId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        { 
+          id: 4, 
+          name: 'Труба 108×4', 
+          code: 'TP-004', 
+          pcs: 30, 
+          unit: { 
+            id: 1, 
+            name: 'шт.', 
+            code: 'PCS' 
+          }, 
+          description: 'Труба стальная 108×4, длина 6м',
+          parentId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        { 
+          id: 5, 
+          name: 'Труба 133×4.5', 
+          code: 'TP-005', 
+          pcs: 25, 
+          unit: { 
+            id: 1, 
+            name: 'шт.', 
+            code: 'PCS' 
+          }, 
+          description: 'Труба стальная 133×4.5, длина 6м',
+          parentId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
     } finally {
       console.log('=== ЗАВЕРШЕНИЕ ЗАПРОСА ===');
     }
   },
-
+	
+  registerMaterialOnSection: async (materialId, quantity, sectionId, userId) => {
+    try {
+      const response = await api.post('/warehouse/material-registration', {
+        materialId,
+        quantity,
+        sectionId,
+        userId,
+        registrationDate: new Date().toISOString(),
+        status: 'registered'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error registering material:', error);
+      // Для разработки возвращаем тестовые данные
+      return { 
+        success: true, 
+        registrationId: `REG-${Date.now()}`,
+        message: 'Материал зарегистрирован на участке (тестовый режим)'
+      };
+    }
+  },
+  
+  updateMaterialUnit: async (materialId, unitId, operationId) => {
+    try {
+      const response = await api.put(`/materials/${materialId}/update-unit`, {
+        unitId,
+        operationId,
+        updatedAt: new Date().toISOString()
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating material unit:', error);
+      return { success: true };
+    }
+  },
+  
+  getCurrentUser: async () => {
+    try {
+      const response = await api.get('/auth/me');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      // Тестовый пользователь для разработки
+      return {
+        id: 1,
+        name: 'Оператор Степанов',
+        role: 'operator',
+        sectionId: 1
+      };
+    }
+  },
+  
   getMaterialById: async (id) => {
     try {
       const response = await api.get(`/materials/${id}`);
@@ -167,6 +204,33 @@ export const warehouseService = {
         message: 'Материал зарезервирован (тестовый режим)',
         reservationCode: `RES-${Date.now()}`
       };
+    }
+  },
+  
+  // Запись шага маршрута материала
+  logMaterialRouteStep: async (stepData) => {
+    try {
+      const response = await api.post('/MaterialRouteSteps', stepData);
+      return response.data;
+    } catch (error) {
+      console.error('Error logging material route step:', error);
+      // Для разработки возвращаем успех
+      return { 
+        success: true, 
+        stepId: Date.now(),
+        message: 'Шаг маршрута записан (тестовый режим)'
+      };
+    }
+  },
+
+  // Получение истории шагов для материала
+  getMaterialRouteSteps: async (materialId) => {
+    try {
+      const response = await api.get(`/MaterialRouteSteps/material/${materialId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching material route steps:', error);
+      return [];
     }
   }
 };

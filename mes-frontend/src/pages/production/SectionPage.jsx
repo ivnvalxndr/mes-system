@@ -38,13 +38,43 @@ import {
   Warning,
   Search as SearchIcon,
   Inventory as InventoryIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  History,
+  Check as CheckIcon
 } from '@mui/icons-material';
 
-// Компонент карточки трубы (остается без изменений)
-function PipeCard({ pipe, onDelete }) {
+// Компонент карточки трубы с поддержкой выбора
+function PipeCard({ pipe, onDelete, isSelected, onSelect }) {
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card 
+      sx={{ 
+        height: '100%',
+        cursor: 'pointer',
+        border: isSelected ? '2px solid #1976d2' : '1px solid #e0e0e0',
+        position: 'relative',
+        '&:hover': {
+          boxShadow: 3
+        }
+      }}
+      onClick={() => onSelect(pipe)}
+    >
+      {isSelected && (
+        <Box sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          bgcolor: 'primary.main',
+          borderRadius: '50%',
+          width: 24,
+          height: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <CheckIcon sx={{ color: 'white', fontSize: 16 }} />
+        </Box>
+      )}
+      
       <CardContent sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
           <Box>
@@ -55,24 +85,55 @@ function PipeCard({ pipe, onDelete }) {
               Код: {pipe.code}
             </Typography>
           </Box>
-          <IconButton size="small" onClick={() => onDelete(pipe.id)}>
+          <IconButton 
+            size="small" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(pipe.id);
+            }}
+          >
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Box>
         
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          Диаметр: {pipe.diameter}мм × {pipe.thickness}мм
-        </Typography>
-        <Typography variant="body2">
-          Длина: {pipe.length}м
-        </Typography>
-        <Typography variant="body2">
-          Материал: {pipe.material}
-        </Typography>
+        {pipe.diameter > 0 && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Размер: Ø{pipe.diameter}мм × {pipe.thickness}мм
+          </Typography>
+        )}
+        
+        {pipe.length && (
+          <Typography variant="body2">
+            Длина: {pipe.length}м
+          </Typography>
+        )}
+        
+        {pipe.material && (
+          <Typography variant="body2">
+            Материал: {pipe.material}
+          </Typography>
+        )}
         
         <Typography variant="h6" sx={{ mt: 1, fontWeight: 'bold' }}>
-          {pipe.quantity} шт.
+          {pipe.quantity} {pipe.unit || 'шт.'}
         </Typography>
+        
+        {/* Информация о регистрации */}
+        {pipe.registrationDate && (
+          <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #ddd' }}>
+            <Typography variant="caption" color="text.secondary" display="block">
+              Поступил: {new Date(pipe.registrationDate).toLocaleDateString()}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block">
+              Участок: {pipe.sectionUnit}
+            </Typography>
+            {pipe.registeredBy && (
+              <Typography variant="caption" color="text.secondary" display="block">
+                Принял: {pipe.registeredBy}
+              </Typography>
+            )}
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
@@ -88,85 +149,78 @@ function WarehouseDialog({ open, onClose, onSelectMaterial }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); 
 
-  // Mock данные для склада (замените на реальный API)
-  /*const mockWarehouseMaterials = [
-    { id: 101, name: 'Труба 57×3.5', code: 'TP-001', type: 'Труба', quantity: 150, unit: 'шт.', specifications: { diameter: 57, thickness: 3.5, length: 6 } },
-    { id: 102, name: 'Труба 76×4', code: 'TP-002', type: 'Труба', quantity: 80, unit: 'шт.', specifications: { diameter: 76, thickness: 4, length: 6 } },
-    { id: 103, name: 'Труба 89×4', code: 'TP-003', type: 'Труба', quantity: 45, unit: 'шт.', specifications: { diameter: 89, thickness: 4, length: 6 } },
-    { id: 104, name: 'Труба 108×4', code: 'TP-004', type: 'Труба', quantity: 30, unit: 'шт.', specifications: { diameter: 108, thickness: 4, length: 6 } },
-    { id: 105, name: 'Труба 133×4.5', code: 'TP-005', type: 'Труба', quantity: 25, unit: 'шт.', specifications: { diameter: 133, thickness: 4.5, length: 6 } },
-    { id: 106, name: 'Уголок 50×50×5', code: 'UG-001', type: 'Металлопрокат', quantity: 120, unit: 'шт.', specifications: { width: 50, height: 50, thickness: 5, length: 6 } },
-    { id: 107, name: 'Лист стальной 2мм', code: 'LS-001', type: 'Лист', quantity: 25, unit: 'лист', specifications: { thickness: 2, width: 1500, length: 3000 } },
-  ];*/
-
-  // Загрузка материалов при открытии диалога
   useEffect(() => {
-	  if (open) {
-		fetchMaterials();
-	  } else {
-		// Сброс при закрытии
-		setMaterials([]);
-		setFilteredMaterials([]);
-		setSearch('');
-	  }
-	}, [open]);
-	
-	const fetchMaterials = async () => {
-  setLoading(true);
-  setError(null);
+    if (open) {
+      fetchMaterials();
+    } else {
+      setMaterials([]);
+      setFilteredMaterials([]);
+      setSearch('');
+    }
+  }, [open]);
   
-  try {
-    console.log('Загрузка материалов...');
-    const apiMaterials = await warehouseService.getAvailableMaterials();
-    console.log('Сырые данные API:', apiMaterials);
+  const fetchMaterials = async () => {
+    setLoading(true);
+    setError(null);
     
-    // ПРАВИЛЬНОЕ ФОРМАТИРОВАНИЕ:
-    const formattedMaterials = apiMaterials.map(item => {
-      // ВАЖНО: преобразуем unit объект в строку
-      let unitText = 'шт.';
-      if (item.unit) {
-        if (typeof item.unit === 'string') {
-          unitText = item.unit;
-        } else if (typeof item.unit === 'object') {
-          unitText = item.unit.name || item.unit.code || 'шт.';
-        }
-      }
+    try {
+      console.log('Загрузка материалов...');
+      const apiMaterials = await warehouseService.getAvailableMaterials();
+      console.log('Сырые данные API:', apiMaterials);
       
-      return {
-        id: item.id,
-        name: item.name,
-        code: item.code?.toString() || `MAT-${item.id}`,
-        type: item.parentId ? 'Деталь' : 'Материал',
-        quantity: item.pcs || item.quantity || 0,
-        unit: unitText, // Теперь ЭТО СТРОКА!
-        description: item.description || '',
-        // Сохраняем оригинальный объект отдельно если нужно
-        unitObject: item.unit,
-        ...item
-      };
-    });
-    
-    console.log('Отформатированные (unit как строка):', formattedMaterials);
-    setMaterials(formattedMaterials);
-    setFilteredMaterials(formattedMaterials);
-    
-  } catch (error) {
-    console.error('Ошибка загрузки:', error);
-    setError(`Ошибка: ${error.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+      const formattedMaterials = apiMaterials.map(item => {
+        const description = item.description || '';
+        let specifications = {};
+        
+        const diameterMatch = description.match(/(\d+)[×x](\d+(?:\.\d+)?)/) || 
+                             item.name?.match(/(\d+)[×x](\d+(?:\.\d+)?)/);
+        
+        const lengthMatch = description.match(/(\d+)\s*м/) || 
+                           description.match(/длина\s*[=:]?\s*(\d+)/i);
+        
+        if (diameterMatch) {
+          specifications.diameter = parseInt(diameterMatch[1]);
+          specifications.thickness = parseFloat(diameterMatch[2]);
+        }
+        
+        if (lengthMatch) {
+          specifications.length = parseInt(lengthMatch[1]);
+        }
+        
+        let unitText = 'шт.';
+        if (item.unit) {
+          if (typeof item.unit === 'string') {
+            unitText = item.unit;
+          } else if (typeof item.unit === 'object') {
+            unitText = item.unit.name || item.unit.code || 'шт.';
+          }
+        }
+        
+        return {
+          id: item.id,
+          name: item.name,
+          code: item.code?.toString() || `MAT-${item.id}`,
+          type: item.parentId ? 'Деталь' : 'Материал',
+          quantity: item.pcs || item.quantity || 0,
+          unit: unitText,
+          description: description,
+          specifications: specifications,
+          rawData: item
+        };
+      });
+      
+      console.log('Отформатированные материалы:', formattedMaterials);
+      setMaterials(formattedMaterials);
+      setFilteredMaterials(formattedMaterials);
+      
+    } catch (error) {
+      console.error('Ошибка загрузки:', error);
+      setError(`Ошибка: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-// Вспомогательная функция для извлечения чисел из текста
-const extractNumber = (text, keyword) => {
-  if (!text) return null;
-  const regex = new RegExp(`${keyword}\\s*[=:]?\\s*(\\d+(?:\\.\\d+)?)`, 'i');
-  const match = text.match(regex);
-  return match ? parseFloat(match[1]) : null;
-};
-
-  // Фильтрация по поиску
   useEffect(() => {
     if (search) {
       const filtered = materials.filter(material =>
@@ -214,6 +268,10 @@ const extractNumber = (text, keyword) => {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress />
             </Box>
+          ) : error ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
           ) : (
             <>
               <TableContainer>
@@ -268,6 +326,12 @@ const extractNumber = (text, keyword) => {
                                   Длина: {material.specifications.length}м
                                 </Typography>
                               )}
+                              {!material.specifications?.diameter && material.description && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {material.description.substring(0, 50)}
+                                  {material.description.length > 50 ? '...' : ''}
+                                </Typography>
+                              )}
                             </TableCell>
                             <TableCell align="right">
                               <Typography
@@ -278,10 +342,9 @@ const extractNumber = (text, keyword) => {
                                 {material.quantity}
                               </Typography>
                               <Typography variant="caption">
-                                {/* Безопасный рендеринг */}
-								  {typeof material.unit === 'string' 
-									? material.unit 
-									: (material.unit?.name || material.unit?.code || 'шт.')}
+                                {typeof material.unit === 'string' 
+                                  ? material.unit 
+                                  : (material.unit?.name || material.unit?.code || 'шт.')}
                               </Typography>
                             </TableCell>
                             <TableCell>
@@ -320,7 +383,9 @@ const extractNumber = (text, keyword) => {
       <DialogActions>
         <Button onClick={onClose}>Отмена</Button>
         <Button 
-          onClick={onClose} 
+          onClick={() => {
+            fetchMaterials();
+          }} 
           variant="contained"
           startIcon={<RefreshIcon />}
         >
@@ -438,12 +503,145 @@ function QuantityDialog({ open, onClose, material, onConfirm }) {
   );
 }
 
+// ДИАЛОГ ИСТОРИИ ОПЕРАЦИЙ ДЛЯ ВЫБРАННОГО МАТЕРИАЛА
+function MaterialHistoryDialog({ open, onClose, material, operations, loading }) {
+  // Определяем заголовок в зависимости от наличия данных
+  const getOperationTitle = (operationType) => {
+    switch(operationType) {
+      case 'REGISTRATION': return 'Регистрация на участке';
+      case 'MOVE_TO_OUTPUT': return 'Начало обработки';
+      case 'MOVE_TO_DEFECT': return 'Перемещение в брак';
+      default: return operationType;
+    }
+  };
+
+  const getOperationColor = (operationType) => {
+    switch(operationType) {
+      case 'REGISTRATION': return 'primary';
+      case 'MOVE_TO_OUTPUT': return 'success';
+      case 'MOVE_TO_DEFECT': return 'error';
+      default: return 'default';
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography variant="h6">История операций</Typography>
+            {material && (
+              <Typography variant="subtitle1" color="primary">
+                {material.name} ({material.code})
+                {material.warehouseMaterialId && ` • ID: ${material.warehouseMaterialId}`}
+              </Typography>
+            )}
+          </Box>
+          <Chip 
+            label={`${operations.length} операций`} 
+            size="small" 
+            color="primary"
+          />
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        {loading ? (
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            <CircularProgress />
+            <Typography sx={{ mt: 2 }}>Загрузка истории...</Typography>
+          </Box>
+        ) : !material ? (
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            <Typography color="text.secondary">
+              Материал не выбран
+            </Typography>
+          </Box>
+        ) : operations.length === 0 ? (
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            <Typography color="text.secondary">
+              Нет операций для этого материала
+            </Typography>
+          </Box>
+        ) : (
+          <TableContainer sx={{ maxHeight: 400 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Дата и время</TableCell>
+                  <TableCell>Операция</TableCell>
+                  <TableCell>Откуда</TableCell>
+                  <TableCell>Куда</TableCell>
+                  <TableCell>Кол-во</TableCell>
+                  <TableCell>Оператор</TableCell>
+                  <TableCell>Статус</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {operations.map((op) => (
+                  <TableRow key={op.id} hover>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {new Date(op.timestamp).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(op.timestamp).toLocaleTimeString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getOperationTitle(op.operationType)}
+                        size="small" 
+                        color={getOperationColor(op.operationType)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {op.fromLocation || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {op.toLocation || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight="bold">
+                        {op.quantity || op.pcs || 0} шт.
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      {op.operatorName || op.userName || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={op.status === 'success' ? '✅ Успешно' : '❌ Ошибка'}
+                        size="small"
+                        color={op.status === 'success' ? 'success' : 'error'}
+                        variant="outlined"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained">
+          Закрыть
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 // Главный компонент страницы участка
 function SectionPage() {
   const { sectionId } = useParams();
   const navigate = useNavigate();
   
-  // Начальные данные труб (остаются)
+  // Начальные данные труб
   const [pipes, setPipes] = useState({
     loading: [
       { id: 1, name: 'Труба 57×3.5', code: 'TP-001', diameter: 57, thickness: 3.5, length: 6, material: 'Сталь', quantity: 50 },
@@ -458,18 +656,267 @@ function SectionPage() {
     ],
   });
   
-  // Новые состояния для диалогов склада
+  // Состояния для диалогов
   const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  
+  // Состояния для регистрации и выбора
+  const [currentUser, setCurrentUser] = useState(null);
+  const [operationHistory, setOperationHistory] = useState([]);
+  const [isRegistering, setIsRegistering] = useState(false);
+  
+  // Состояния для выбранного материала и истории
+  const [selectedPipe, setSelectedPipe] = useState(null);
+  const [materialHistoryDialogOpen, setMaterialHistoryDialogOpen] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [materialHistory, setMaterialHistory] = useState([]);
 
-  // Удалить трубу (остается без изменений)
+  // Загружаем пользователя при монтировании
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const user = await warehouseService.getCurrentUser();
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Ошибка загрузки пользователя:', error);
+      // Тестовый пользователь для разработки
+      setCurrentUser({
+        id: 1,
+        name: 'Оператор Степанов',
+        role: 'operator',
+        sectionId: 1
+      });
+    }
+  };
+  
+  useEffect(() => {
+    console.log('=== ОТЛАДКА SECTIONPAGE ===');
+    console.log('sectionId:', sectionId);
+    console.log('selectedPipe:', selectedPipe);
+    console.log('materialHistoryDialogOpen:', materialHistoryDialogOpen);
+    console.log('operationHistory:', operationHistory);
+  }, [selectedPipe, materialHistoryDialogOpen]);
+  
+  // Функция для логирования операций в MaterialRouteSteps
+  const logOperation = async (operationType, material, quantity, fromLocation, toLocation) => {
+		
+    console.log('=== НАЧАЛО LOGOPERATION ===');
+    console.log('operationType:', operationType);
+    console.log('material:', material);
+    console.log('material.id:', material?.id);
+    console.log('material.warehouseMaterialId:', material?.warehouseMaterialId);	
+	
+	// Определяем тип шага и unitId
+    let stepType = '';
+    let notes = '';
+    
+    switch(operationType) {
+      case 'REGISTRATION':
+        stepType = 'REGISTRATION_ON_SECTION';
+        fromLocation = 'WAREHOUSE';
+        toLocation = `SECTION_${sectionId}`;
+        notes = `Регистрация материала ${material.name} (${material.code}) на участке ${sectionId}`;
+        break;
+      case 'MOVE_TO_OUTPUT':
+        stepType = 'PROCESSING_START';
+        fromLocation = `SECTION_${sectionId}_LOADING`;
+        toLocation = `SECTION_${sectionId}_PROCESSING`;
+        notes = `Начало обработки материала ${material.name} (${material.code})`;
+        break;
+      case 'MOVE_TO_DEFECT':
+        stepType = 'MOVE_TO_DEFECT';
+        fromLocation = `SECTION_${sectionId}_LOADING`;
+        toLocation = `SECTION_${sectionId}_DEFECT`;
+        notes = `Перемещение материала ${material.name} (${material.code}) в брак`;
+        break;
+      default:
+        stepType = operationType;
+        notes = `Операция: ${operationType}`;
+    }
+    
+    // Формируем данные для MaterialRouteSteps
+    const routeStepData = {
+      materialId: material.id || material.warehouseMaterialId,
+      stepType: stepType,
+      fromLocation: fromLocation,
+      toLocation: toLocation,
+      unitId: parseInt(sectionId) || 0,
+      operationDate: new Date().toISOString(),
+      pcs: quantity || material.quantity || 0,
+      mts: 0, // Метры
+      tns: 0, // Тонны
+      notes: `${notes}. Оператор: ${currentUser?.name || 'Неизвестный'}`
+    };
+    
+    console.log('Отправка шага маршрута в MaterialRouteSteps:', routeStepData);
+    
+    try {
+      // 1. Отправляем на сервер в MaterialRouteSteps
+      const result = await warehouseService.logMaterialRouteStep(routeStepData);
+      
+      console.log('Шаг маршрута сохранен в БД:', result);
+      
+      // 2. Создаем локальную запись для отображения
+      const localOperation = {
+        id: Date.now(),
+        stepId: result.stepId || result.id || `STEP-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        operationType: operationType,
+        stepType: stepType,
+        materialId: material.id || material.warehouseMaterialId,
+        materialName: material.name,
+        materialCode: material.code,
+        quantity: quantity || material.quantity || 0,
+        fromLocation: fromLocation,
+        toLocation: toLocation,
+        unitId: sectionId,
+        operatorId: currentUser?.id || 0,
+        operatorName: currentUser?.name || 'Неизвестный оператор',
+        status: 'success',
+        details: {
+          unit: material.unit,
+          warehouseMaterialId: material.warehouseMaterialId || material.id,
+          serverResponse: result
+        }
+      };
+      
+      // 3. Добавляем в локальную историю
+      setOperationHistory(prev => [localOperation, ...prev]);
+      
+      return localOperation;
+      
+    } catch (error) {
+      console.error('Ошибка записи шага маршрута:', error);
+      
+      // Создаем запись об ошибке
+      const errorOperation = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        operationType: operationType,
+        stepType: stepType,
+        materialId: material.id || material.warehouseMaterialId,
+        materialName: material.name,
+        materialCode: material.code,
+        quantity: quantity || material.quantity || 0,
+        fromLocation: fromLocation,
+        toLocation: toLocation,
+        unitId: sectionId,
+        operatorId: currentUser?.id || 0,
+        operatorName: currentUser?.name || 'Неизвестный оператор',
+        status: 'error',
+        error: error.message,
+        details: {
+          unit: material.unit,
+          warehouseMaterialId: material.warehouseMaterialId || material.id
+        }
+      };
+      
+      setOperationHistory(prev => [errorOperation, ...prev]);
+      
+      throw error;
+    }
+  };
+
+  // Функция загрузки истории из БД
+  const loadMaterialHistoryFromDB = async (materialId) => {
+    if (!materialId) return [];
+    
+    setLoadingHistory(true);
+    try {
+      console.log('Загрузка истории для материала ID:', materialId);
+      const steps = await warehouseService.getMaterialRouteSteps(materialId);
+      console.log('Получены шаги из БД:', steps);
+      
+      // Преобразуем шаги из БД в формат для отображения
+      const formattedSteps = steps.map(step => ({
+        id: step.id,
+        stepId: step.id,
+        timestamp: step.operationDate,
+        operationType: mapStepTypeToOperationType(step.stepType),
+        stepType: step.stepType,
+        materialId: step.materialId,
+        materialName: step.materialName || 'Неизвестно',
+        materialCode: step.materialCode || '',
+        quantity: step.pcs,
+        fromLocation: step.fromLocation,
+        toLocation: step.toLocation,
+        unitId: step.unitId,
+        userId: step.userId || 0,
+        userName: step.userName || 'Неизвестно',
+        status: 'success',
+        notes: step.notes,
+        details: {
+          mts: step.mts,
+          tns: step.tns
+        }
+      }));
+      
+      return formattedSteps;
+    } catch (error) {
+      console.error('Ошибка загрузки истории из БД:', error);
+      return [];
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Вспомогательная функция для преобразования типов
+  const mapStepTypeToOperationType = (stepType) => {
+    switch(stepType) {
+      case 'REGISTRATION_ON_SECTION': return 'REGISTRATION';
+      case 'PROCESSING_START': return 'MOVE_TO_OUTPUT';
+      case 'MOVE_TO_DEFECT': return 'MOVE_TO_DEFECT';
+      default: return stepType;
+    }
+  };
+
+  // Открытие диалога истории с загрузкой данных
+  const handleOpenMaterialHistory = async () => {
+    if (selectedPipe?.warehouseMaterialId) {
+      setMaterialHistoryDialogOpen(true);
+      setLoadingHistory(true);
+      
+      try {
+        // Загружаем историю из БД
+        const dbHistory = await loadMaterialHistoryFromDB(selectedPipe.warehouseMaterialId);
+        
+        // Объединяем с локальной историей
+        const localHistory = operationHistory.filter(op => 
+          op.materialId === selectedPipe.warehouseMaterialId
+        );
+        
+        const allHistory = [...dbHistory, ...localHistory]
+          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        setMaterialHistory(allHistory);
+      } catch (error) {
+        console.error('Ошибка загрузки истории:', error);
+        setMaterialHistory([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    }
+  };
+
+  // Удалить трубу
   const handleDeletePipe = (pocket, pipeId) => {
+    if (selectedPipe?.id === pipeId) {
+      setSelectedPipe(null);
+    }
     setPipes(prev => ({
       ...prev,
       [pocket]: prev[pocket].filter(pipe => pipe.id !== pipeId)
     }));
+  };
+
+  // Выбор трубы
+  const handleSelectPipe = (pipe) => {
+    setSelectedPipe(selectedPipe?.id === pipe.id ? null : pipe);
   };
 
   // Открыть диалог выбора материалов со склада
@@ -485,70 +932,218 @@ function SectionPage() {
   };
 
   // Добавление материала со склада
-  const handleAddFromWarehouse = (material, quantity) => {
-    // Создаем новую трубу на основе материала со склада
-    const newPipe = {
-      id: Date.now(),
-      name: material.name,
-      code: material.code,
-      diameter: material.specifications?.diameter || 0,
-      thickness: material.specifications?.thickness || 0,
-      length: material.specifications?.length || 0,
-      material: material.type || 'Сталь',
-      quantity: quantity
-    };
+  const handleAddFromWarehouse = async (material, quantity) => {
+    setIsRegistering(true);
     
-    // Добавляем в загрузочный карман
-    setPipes(prev => ({
-      ...prev,
-      loading: [...prev.loading, newPipe]
-    }));
-    
-    // Показываем уведомление
-    setSnackbar({
-      open: true,
-      message: `Добавлено ${quantity} шт. "${material.name}"`,
-      severity: 'success'
-    });
+    try {
+      // 1. Парсим характеристики
+      let diameter = 0;
+      let thickness = 0;
+      let length = 6;
+      
+      const fullText = `${material.name} ${material.description || ''}`;
+      const sizeMatch = fullText.match(/(\d+)[×x](\d+(?:\.\d+)?)/);
+      if (sizeMatch) {
+        diameter = parseInt(sizeMatch[1]);
+        thickness = parseFloat(sizeMatch[2]);
+      }
+      
+      const lengthMatch = fullText.match(/(\d+)\s*м\b/) || 
+                         fullText.match(/длина\s*[:=]?\s*(\d+)/i);
+      if (lengthMatch) {
+        length = parseInt(lengthMatch[1]);
+      }
+      
+      // 2. Создаем локальный объект
+      const newPipe = {
+        id: Date.now(),
+        name: material.name,
+        code: material.code,
+        diameter: diameter,
+        thickness: thickness,
+        length: length,
+        material: material.type === 'Труба' ? 'Сталь' : material.type || 'Сталь',
+        quantity: quantity,
+        warehouseMaterialId: material.id,
+        unit: typeof material.unit === 'string' 
+          ? material.unit 
+          : (material.unit?.name || material.unit?.code || 'шт.'),
+        registeredBy: currentUser?.name || 'Неизвестный',
+        registrationDate: new Date().toISOString(),
+        sectionUnit: sectionId
+      };
+      
+      // 3. Добавляем в загрузочный карман
+      setPipes(prev => ({
+        ...prev,
+        loading: [...prev.loading, newPipe]
+      }));
+      
+      // 4. Автоматически выбираем новый материал
+      setSelectedPipe(newPipe);
+      
+      // 5. Логируем операцию регистрации в MaterialRouteSteps
+      await logOperation('REGISTRATION', material, quantity, 'WAREHOUSE', `SECTION_${sectionId}`);
+      
+      // 6. Показываем уведомление
+      setSnackbar({
+        open: true,
+        message: `✅ Материал "${material.name}" зарегистрирован на участке ${sectionId}`,
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      console.error('Ошибка регистрации материала:', error);
+      
+      // Показываем ошибку пользователю
+      setSnackbar({
+        open: true,
+        message: `❌ Ошибка регистрации: ${error.message}`,
+        severity: 'error'
+      });
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
-  // Переместить трубу из загрузки в выход (остается)
-  const handleMoveToOutput = () => {
+  // Переместить трубу из загрузки в выход
+  const handleMoveToOutput = async () => {
     if (pipes.loading.length === 0) return;
     
     const pipeToMove = pipes.loading[0];
-    setPipes(prev => ({
-      loading: prev.loading.filter(p => p.id !== pipeToMove.id),
-      output: [...prev.output, pipeToMove]
-    }));
+    
+    try {
+      // 1. Логируем операцию в MaterialRouteSteps
+      await logOperation('MOVE_TO_OUTPUT', pipeToMove, pipeToMove.quantity, 
+        `SECTION_${sectionId}_LOADING`, `SECTION_${sectionId}_PROCESSING`);
+      
+      // 2. Обновляем локальное состояние
+      setPipes(prev => ({
+        loading: prev.loading.filter(p => p.id !== pipeToMove.id),
+        output: [...prev.output, pipeToMove]
+      }));
+      
+      // 3. Снимаем выделение если нужно
+      if (selectedPipe?.id === pipeToMove.id) {
+        setSelectedPipe(null);
+      }
+      
+      // 4. Уведомление
+      setSnackbar({
+        open: true,
+        message: `✅ Материал "${pipeToMove.name}" перемещен на обработку`,
+        severity: 'success'
+      });
+      
+    } catch (error) {
+      console.error('Ошибка перемещения на обработку:', error);
+      setSnackbar({
+        open: true,
+        message: `❌ Ошибка: ${error.message}`,
+        severity: 'error'
+      });
+    }
   };
 
-  // Переместить трубу в брак (остается)
-  const handleMoveToDefect = () => {
+  // Переместить трубу в брак
+  const handleMoveToDefect = async () => {
     if (pipes.loading.length === 0) return;
     
     const pipeToMove = pipes.loading[0];
-    setPipes(prev => ({
-      loading: prev.loading.filter(p => p.id !== pipeToMove.id),
-      defect: [...prev.defect, pipeToMove]
-    }));
+    
+    try {
+      // 1. Логируем операцию в MaterialRouteSteps
+      await logOperation('MOVE_TO_DEFECT', pipeToMove, pipeToMove.quantity,
+        `SECTION_${sectionId}_LOADING`, `SECTION_${sectionId}_DEFECT`);
+      
+      // 2. Обновляем локальное состояние
+      setPipes(prev => ({
+        loading: prev.loading.filter(p => p.id !== pipeToMove.id),
+        defect: [...prev.defect, pipeToMove]
+      }));
+      
+      // 3. Снимаем выделение если нужно
+      if (selectedPipe?.id === pipeToMove.id) {
+        setSelectedPipe(null);
+      }
+      
+      // 4. Уведомление
+      setSnackbar({
+        open: true,
+        message: `⚠️ Материал "${pipeToMove.name}" перемещен в брак`,
+        severity: 'warning'
+      });
+      
+    } catch (error) {
+      console.error('Ошибка перемещения в брак:', error);
+      setSnackbar({
+        open: true,
+        message: `❌ Ошибка: ${error.message}`,
+        severity: 'error'
+      });
+    }
   };
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Заголовок */}
-      <Box sx={{ mb: 4 }}>
+      {/* Заголовок с кнопками */}
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 4 }}>
         <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate('/production')}
-          sx={{ mb: 2 }}
         >
           Назад
         </Button>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          {sectionId.toUpperCase()}
+        
+        <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ flex: 1 }}>
+          УЧАСТОК {sectionId.toUpperCase()}
         </Typography>
+        
+        <Button 
+		variant="outlined"
+		startIcon={<History />}
+		onClick={() => {
+		console.log('=== КЛИК ПО КНОПКЕ ИСТОРИИ ===');
+		console.log('selectedPipe перед вызовом:', selectedPipe);
+		console.log('materialHistoryDialogOpen перед вызовом:', materialHistoryDialogOpen);
+		handleOpenMaterialHistory();
+		console.log('materialHistoryDialogOpen после вызова:', materialHistoryDialogOpen);
+	}}
+		disabled={!selectedPipe}
+		>
+		История материала
+		{selectedPipe && ` (${selectedPipe.name})`}
+		</Button>
+        
+        {currentUser && (
+          <Chip 
+            label={`Оператор: ${currentUser.name}`}
+            color="primary"
+            variant="outlined"
+          />
+        )}
       </Box>
+
+      {/* Статус выбранного материала */}
+      {selectedPipe && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 3 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small"
+              onClick={() => setSelectedPipe(null)}
+            >
+              Снять выделение
+            </Button>
+          }
+        >
+          <strong>Выбран материал:</strong> {selectedPipe.name} ({selectedPipe.code})
+          {selectedPipe.warehouseMaterialId && ` • ID склада: ${selectedPipe.warehouseMaterialId}`}
+          {selectedPipe.quantity && ` • Количество: ${selectedPipe.quantity} ${selectedPipe.unit || 'шт.'}`}
+        </Alert>
+      )}
 
       {/* ОСНОВНОЙ МАКЕТ С КАРМАНАМИ */}
       <Grid container spacing={3}>
@@ -560,13 +1155,25 @@ function SectionPage() {
               ЗАГРУЗОЧНЫЙ КАРМАН
             </Typography>
             
+            {/* Индикатор регистрации */}
+            {isRegistering && (
+              <Box sx={{ mb: 2 }}>
+                <LinearProgress />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Регистрация материала...
+                </Typography>
+              </Box>
+            )}
+            
             {/* ГРИД труб */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
               {pipes.loading.map((pipe) => (
                 <Grid item xs={12} key={pipe.id}>
                   <PipeCard 
                     pipe={pipe} 
-                    onDelete={(id) => handleDeletePipe('loading', id)} 
+                    onDelete={(id) => handleDeletePipe('loading', id)}
+                    isSelected={selectedPipe?.id === pipe.id}
+                    onSelect={handleSelectPipe}
                   />
                 </Grid>
               ))}
@@ -578,13 +1185,14 @@ function SectionPage() {
                 variant="contained" 
                 startIcon={<AddIcon />}
                 onClick={handleOpenWarehouseDialog}
+                disabled={isRegistering}
               >
                 Зарегистрировать пакет
               </Button>
               <Button 
                 variant="outlined"
                 onClick={handleMoveToOutput}
-                disabled={pipes.loading.length === 0}
+                disabled={pipes.loading.length === 0 || isRegistering}
               >
                 Начать обработку
               </Button>
@@ -592,7 +1200,7 @@ function SectionPage() {
                 variant="outlined" 
                 color="error"
                 onClick={handleMoveToDefect}
-                disabled={pipes.loading.length === 0}
+                disabled={pipes.loading.length === 0 || isRegistering}
               >
                 Завершить обработку
               </Button>
@@ -620,7 +1228,9 @@ function SectionPage() {
                     <Grid item xs={12} sm={6} md={4} key={pipe.id}>
                       <PipeCard 
                         pipe={pipe} 
-                        onDelete={(id) => handleDeletePipe('output', id)} 
+                        onDelete={(id) => handleDeletePipe('output', id)}
+                        isSelected={selectedPipe?.id === pipe.id}
+                        onSelect={handleSelectPipe}
                       />
                     </Grid>
                   ))}
@@ -654,7 +1264,9 @@ function SectionPage() {
                     <Grid item xs={12} sm={6} md={4} key={pipe.id}>
                       <PipeCard 
                         pipe={pipe} 
-                        onDelete={(id) => handleDeletePipe('defect', id)} 
+                        onDelete={(id) => handleDeletePipe('defect', id)}
+                        isSelected={selectedPipe?.id === pipe.id}
+                        onSelect={handleSelectPipe}
                       />
                     </Grid>
                   ))}
@@ -688,6 +1300,18 @@ function SectionPage() {
         onClose={() => setQuantityDialogOpen(false)}
         material={selectedMaterial}
         onConfirm={handleAddFromWarehouse}
+      />
+
+      {/* ДИАЛОГ ИСТОРИИ ОПЕРАЦИЙ ДЛЯ ВЫБРАННОГО МАТЕРИАЛА */}
+      <MaterialHistoryDialog
+        open={materialHistoryDialogOpen}
+        onClose={() => {
+          setMaterialHistoryDialogOpen(false);
+          setMaterialHistory([]);
+        }}
+        material={selectedPipe}
+        operations={materialHistory}
+        loading={loadingHistory}
       />
 
       {/* УВЕДОМЛЕНИЯ */}
