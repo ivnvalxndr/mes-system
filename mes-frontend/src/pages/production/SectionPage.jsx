@@ -877,11 +877,19 @@ function SectionPage() {
 
   // Открытие диалога истории с загрузкой данных
   const handleOpenMaterialHistory = async () => {
+	  console.log('=== handleOpenMaterialHistory ВЫЗВАН ===');
+  
+	if (!selectedPipe) {
+    console.log('ОШИБКА: selectedPipe is null!');
+    return;
+	}
+	//  if (selectedPipe?.warehouseMaterialId) { ПУСТО СМОТРЕТь
     if (selectedPipe?.warehouseMaterialId) {
       setMaterialHistoryDialogOpen(true);
       setLoadingHistory(true);
       
       try {
+		console.log('tr1');
         // Загружаем историю из БД
         const dbHistory = await loadMaterialHistoryFromDB(selectedPipe.warehouseMaterialId);
         
@@ -901,6 +909,7 @@ function SectionPage() {
         setLoadingHistory(false);
       }
     }
+	console.log('tr2');
   };
 
   // Удалить трубу
