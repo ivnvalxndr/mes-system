@@ -3,6 +3,7 @@
 public enum MaterialRouteStepType
 {
     Receipt,        // Поступление
+    Registration,   // Регистрация
     Transfer,       // Перемещение
     Consumption,    // Расход
     Return,         // Возврат

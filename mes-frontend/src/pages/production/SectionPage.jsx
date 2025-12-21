@@ -42,9 +42,32 @@ import {
   History,
   Check as CheckIcon
 } from '@mui/icons-material';
+import LinearProgress from '@mui/material/LinearProgress';
 
 // Компонент карточки трубы с поддержкой выбора
 function PipeCard({ pipe, onDelete, isSelected, onSelect }) {
+  // Функция для преобразования unitId в название участка
+  const getSectionName = (unitId) => {
+    // Здесь логика преобразования ID участка в название    
+    switch(unitId) {
+      case 3:
+        return 'Загрузка труб';
+      case 7:
+        return 'Сортировка';
+      case 9:
+        return 'Упаковка';
+      case 4:
+        return 'ОТК';
+      case 5:
+        return 'НМК';
+      default:
+        return 'Неизвестный участок';
+    }
+  };
+
+  // Получаем название участка
+  const sectionName = pipe.unitId ? `Участок #${pipe.unitId}` : 'Не указан';
+
   return (
     <Card 
       sx={{ 
@@ -83,6 +106,10 @@ function PipeCard({ pipe, onDelete, isSelected, onSelect }) {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Код: {pipe.code}
+            </Typography>
+            {/* Добавляем отображение участка в заголовке */}
+            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
+              {sectionName}
             </Typography>
           </Box>
           <IconButton 
@@ -125,7 +152,7 @@ function PipeCard({ pipe, onDelete, isSelected, onSelect }) {
               Поступил: {new Date(pipe.registrationDate).toLocaleDateString()}
             </Typography>
             <Typography variant="caption" color="text.secondary" display="block">
-              Участок: {pipe.sectionUnit}
+              Участок: {sectionName} {/* Используем вычисленное название */}
             </Typography>
             {pipe.registeredBy && (
               <Typography variant="caption" color="text.secondary" display="block">
@@ -642,19 +669,153 @@ function SectionPage() {
   const navigate = useNavigate();
   
   // Начальные данные труб
-  const [pipes, setPipes] = useState({
-    loading: [
-      { id: 1, name: 'Труба 57×3.5', code: 'TP-001', diameter: 57, thickness: 3.5, length: 6, material: 'Сталь', quantity: 50 },
-      { id: 2, name: 'Труба 76×4', code: 'TP-002', diameter: 76, thickness: 4, length: 6, material: 'Сталь', quantity: 30 },
-      { id: 3, name: 'Труба 89×4', code: 'TP-003', diameter: 89, thickness: 4, length: 6, material: 'Сталь', quantity: 20 },
-    ],
-    output: [
-      { id: 4, name: 'Готовые узлы', code: 'GN-001', diameter: 57, thickness: 3.5, length: 6, material: 'Сталь', quantity: 15 },
-    ],
-    defect: [
-      { id: 5, name: 'Труба 108×4', code: 'TP-004', diameter: 108, thickness: 4, length: 6, material: 'Сталь', quantity: 2 },
-    ],
+  const USE_MOCK_DATA = false;
+
+  const [pipes, setPipes] = useState(() => {
+  if (USE_MOCK_DATA) {
+    // Тестовые данные
+    return {
+      loading: [
+        { id: 1, name: 'Труба 57×3.5', code: 'TP-001', diameter: 57, thickness: 3.5, length: 6, material: 'Сталь', quantity: 50 },
+        // ... остальные тестовые данные
+      ],
+      output: [
+        { id: 4, name: 'Готовые узлы', code: 'GN-001', diameter: 57, thickness: 3.5, length: 6, material: 'Сталь', quantity: 15 },
+      ],
+      defect: [
+        { id: 5, name: 'Труба 108×4', code: 'TP-004', diameter: 108, thickness: 4, length: 6, material: 'Сталь', quantity: 2 },
+      ],
+    };
+  }
+  
+  // Реальные данные - пустые массивы
+  return {
+    loading: [],
+    output: [],
+    defect: [],
+  };
   });
+  
+   // Функция для получения названия участка по sectionId
+  const getSectionDisplayName = (id) => {
+    const sectionNames = {
+      'loading1': 'Загрузка труб',
+      'sorting1': 'Сортировка',
+      'packing1': 'Упаковка',
+      'nmk1': 'НМК'
+    };
+    
+    return sectionNames[id] || `Участок ${id.toUpperCase()}`;
+  };
+  
+  // Получаем отображаемое название
+  const sectionDisplayName = getSectionDisplayName(sectionId);
+  
+  
+  
+  const sectionToUnitId = {
+  // URL sectionId → unitId в базе
+  'loading1': 1,      // Загрузка труб
+  'sorting1': 6,      // Сортировка
+  'packing1': 3,      // Упаковка
+  'nmk1': 5          // НМК
+  };
+
+// Получаем unitId текущего участка
+const currentUnitId = sectionToUnitId[sectionId] || 0;
+console.log('Текущий участок:', sectionId, '→ unitId:', currentUnitId);
+  
+  useEffect(() => {
+  const debugData = async () => {
+    const materials = await warehouseService.getAvailableMaterials();
+    console.log('Все материалы с API:', materials);
+    console.log('Первый материал структура:', materials[0]);
+    console.log('Ключи первого материала:', Object.keys(materials[0]));
+    console.log('Текущий sectionId:', sectionId);
+  };
+  debugData();
+  }, [sectionId]);
+  
+  // useEffect ДЛЯ ЗАГРУЗКИ ДАННЫХ УЧАСТКА:
+  useEffect(() => {
+  const loadSectionData = async () => {
+    try {
+      const materials = await warehouseService.getAvailableMaterials();
+      const currentUnitId = sectionToUnitId[sectionId];
+      
+      console.log('=== ЗАГРУЗКА ДАННЫХ ДЛЯ УЧАСТКА ===');
+      console.log('Текущий участок:', sectionId, '→ unitId:', currentUnitId);
+      console.log('Всего материалов с API:', materials.length);
+      
+      // 1. Проверяем, какие unitId у материалов
+      const materialsAnalysis = materials.map(m => ({
+        code: m.code,
+        unitId: m.unitId,
+        hasUnit: !!m.unitId,
+        rawUnitId: m.unitId
+      }));
+      
+      console.log('Анализ unitId материалов:', materialsAnalysis);
+      
+      // 2. Если все unitId null, добавляем тестовые
+      const allNull = materials.every(m => m.unitId == null);
+      console.log('Все материалы имеют unitId null?:', allNull);
+      
+      const materialsWithFixedUnitId = materials.map(material => {
+      // Если unitId отсутствует, используем текущий участок для разработки
+      const fixedUnitId = material.unitId || currentUnitId;
+        
+        return {
+          id: material.id,
+          name: material.name,
+          code: material.code,
+          diameter: 0,
+          thickness: 0,
+          length: 6,
+          material: 'Сталь',
+          quantity: material.pcs || 0 || 'шт.',          
+          unitId: fixedUnitId,
+          warehouseMaterialId: material.id,
+          registrationDate: new Date().toISOString(),
+          registeredBy: 'Оператор Степанов'
+        };
+      });
+      
+      // 3. Фильтруем по текущему участку
+      const filteredMaterials = materialsWithFixedUnitId.filter(
+        material => material.unitId === currentUnitId
+      );
+      
+      console.log(`На участке ${sectionId} найдено материалов:`, filteredMaterials.length);
+      console.log('Отфильтрованные материалы:', filteredMaterials);
+      
+      // 4. Если нет материалов, добавляем первый для тестирования
+      let finalMaterials = filteredMaterials;
+      if (filteredMaterials.length === 0 && materialsWithFixedUnitId.length > 0) {
+        console.warn('⚠️ На участке нет материалов, показываем тестовый');
+        const testMaterial = {
+          ...materialsWithFixedUnitId[0],
+          id: Date.now(), // Новый ID для теста
+          quantity: 10
+        };
+        finalMaterials = [testMaterial];
+      }
+      
+      // 5. Обновляем состояние
+      setPipes({
+        loading: finalMaterials,
+        output: [],
+        defect: []
+      });
+      
+    } catch (error) {
+      console.error('Ошибка загрузки данных участка:', error);
+    }
+  };
+  
+  loadSectionData();
+}, [sectionId]);
+  
   
   // Состояния для диалогов
   const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
@@ -913,15 +1074,92 @@ function SectionPage() {
   };
 
   // Удалить трубу
-  const handleDeletePipe = (pocket, pipeId) => {
+  const handleDeletePipe = async (pocket, pipeId) => {
+  try {
+    // Находим удаляемый материал
+    const pipeToDelete = pipes[pocket].find(pipe => pipe.id === pipeId);
+    if (!pipeToDelete) {
+      console.error('Материал для удаления не найден');
+      return;
+    }
+    
+    console.log('=== УДАЛЕНИЕ МАТЕРИАЛА ===');
+    console.log('Материал:', pipeToDelete);
+    
+    // 1. ОБНОВЛЯЕМ MATERIAL В БД - ПЕРЕМЕЩАЕМ НА ОБЩИЙ СКЛАД (unitId: 11)
+    if (pipeToDelete.warehouseMaterialId) {
+      console.log('1. Обновляем unitId материала на 11 (общий склад)...');
+      
+      const updateData = {
+        unitId: 11, //перемещаем на общий склад
+        code: pipeToDelete.code,
+        name: pipeToDelete.name,
+        pcs: pipeToDelete.quantity || 0
+      };
+      
+      try {
+        await warehouseService.updateMaterial(pipeToDelete.warehouseMaterialId, updateData);
+        console.log('✅ Material обновлен в БД (unitId: 11)');
+      } catch (error) {
+        console.error('❌ Ошибка обновления material в БД:', error);
+      }
+    }
+    
+    // 2. ЗАПИСЫВАЕМ В MATERIAL ROUTE STEPS - ОПЕРАЦИЯ УДАЛЕНИЯ
+    console.log('2. Записываем шаг удаления в историю...');
+    
+    const routeStepData = {
+  materialId: pipeToDelete.warehouseMaterialId || pipeToDelete.id,
+  stepType: 'Return',
+  fromLocation: `SECTION_${sectionId}_${pocket.toUpperCase()}`,
+  toLocation: 'WAREHOUSE_GENERAL',
+  unitId: 11,
+  operationDate: new Date().toISOString(),
+  pcs: pipeToDelete.quantity,
+  mts: 0,
+  tns: 0,
+  notes: `Материал ${pipeToDelete.name} (${pipeToDelete.code}) удален с участка ${sectionId}`
+};
+    
+    try {
+      await warehouseService.logMaterialRouteStep(routeStepData);
+      console.log('✅ Шаг удаления записан в историю');
+    } catch (error) {
+      console.error('❌ Ошибка записи шага удаления:', error);
+    }
+    
+    // 3. УДАЛЯЕМ ИЗ ЛОКАЛЬНОГО СОСТОЯНИЯ
+    console.log('3. Удаляем из локального состояния...');
+    
+    // Снимаем выделение если нужно
     if (selectedPipe?.id === pipeId) {
       setSelectedPipe(null);
     }
+    
+    // Удаляем из соответствующего кармана
     setPipes(prev => ({
       ...prev,
       [pocket]: prev[pocket].filter(pipe => pipe.id !== pipeId)
     }));
-  };
+    
+    // 4. УВЕДОМЛЕНИЕ ПОЛЬЗОВАТЕЛЮ
+    setSnackbar({
+      open: true,
+      message: `✅ Материал "${pipeToDelete.name}" удален с участка и перемещен на общий склад`,
+      severity: 'success'
+    });
+    
+    console.log('=== УДАЛЕНИЕ ЗАВЕРШЕНО ===');
+    
+  } catch (error) {
+    console.error('Общая ошибка при удалении:', error);
+    setSnackbar({
+      open: true,
+      message: `❌ Ошибка при удалении: ${error.message}`,
+      severity: 'error'
+    });
+  }
+};
 
   // Выбор трубы
   const handleSelectPipe = (pipe) => {
@@ -940,80 +1178,136 @@ function SectionPage() {
     setQuantityDialogOpen(true);
   };
 
-  // Добавление материала со склада
-  const handleAddFromWarehouse = async (material, quantity) => {
-    setIsRegistering(true);
+ 
+ // Добавление материала со склада
+ const handleAddFromWarehouse = async (material, quantity) => {
+  setIsRegistering(true);
+  
+  try {
+    console.log('=== РЕГИСТРАЦИЯ МАТЕРИАЛА ===');
+    console.log('Материал для регистрации:', material);
     
-    try {
-      // 1. Парсим характеристики
-      let diameter = 0;
-      let thickness = 0;
-      let length = 6;
-      
-      const fullText = `${material.name} ${material.description || ''}`;
-      const sizeMatch = fullText.match(/(\d+)[×x](\d+(?:\.\d+)?)/);
-      if (sizeMatch) {
-        diameter = parseInt(sizeMatch[1]);
-        thickness = parseFloat(sizeMatch[2]);
-      }
-      
-      const lengthMatch = fullText.match(/(\d+)\s*м\b/) || 
-                         fullText.match(/длина\s*[:=]?\s*(\d+)/i);
-      if (lengthMatch) {
-        length = parseInt(lengthMatch[1]);
-      }
-      
-      // 2. Создаем локальный объект
-      const newPipe = {
-        id: Date.now(),
-        name: material.name,
-        code: material.code,
-        diameter: diameter,
-        thickness: thickness,
-        length: length,
-        material: material.type === 'Труба' ? 'Сталь' : material.type || 'Сталь',
-        quantity: quantity,
-        warehouseMaterialId: material.id,
-        unit: typeof material.unit === 'string' 
-          ? material.unit 
-          : (material.unit?.name || material.unit?.code || 'шт.'),
-        registeredBy: currentUser?.name || 'Неизвестный',
-        registrationDate: new Date().toISOString(),
-        sectionUnit: sectionId
-      };
-      
-      // 3. Добавляем в загрузочный карман
-      setPipes(prev => ({
-        ...prev,
-        loading: [...prev.loading, newPipe]
-      }));
-      
-      // 4. Автоматически выбираем новый материал
-      setSelectedPipe(newPipe);
-      
-      // 5. Логируем операцию регистрации в MaterialRouteSteps
-      await logOperation('REGISTRATION', material, quantity, 'WAREHOUSE', `SECTION_${sectionId}`);
-      
-      // 6. Показываем уведомление
-      setSnackbar({
-        open: true,
-        message: `✅ Материал "${material.name}" зарегистрирован на участке ${sectionId}`,
-        severity: 'success'
-      });
-      
-    } catch (error) {
-      console.error('Ошибка регистрации материала:', error);
-      
-      // Показываем ошибку пользователю
-      setSnackbar({
-        open: true,
-        message: `❌ Ошибка регистрации: ${error.message}`,
-        severity: 'error'
-      });
-    } finally {
-      setIsRegistering(false);
-    }
-  };
+    // 1. ОБНОВЛЯЕМ UNIT МАТЕРИАЛА В БД
+    console.log('1. Обновляем unit материала...');
+    
+    // Определяем unitId (преобразуем "loading1" в число)
+    const unitIdValue = parseInt(sectionId.replace('loading', '')) || 1;
+    
+    const updateData = {
+      code: material.code,           // Обязательное поле
+      name: material.name,           // Обязательное поле
+      description: material.description || '',
+      parentId: material.parentId || null,
+      unitId: unitIdValue,           // ← ВАЖНО: устанавливаем участок!
+      pcs: quantity,                 // Количество на участке
+      mts: 0,
+      tns: 0
+    };
+    
+    console.log('Данные для обновления материала:', updateData);
+    
+    const updateResult = await warehouseService.updateMaterial(
+      material.id,
+      updateData
+    );
+    
+    console.log('Результат обновления материала:', updateResult);
+    
+    // 2. ЗАПИСЫВАЕМ В MATERIAL ROUTE STEPS
+    console.log('2. Записываем шаг маршрута...');
+    
+    const routeStepData = {
+      materialId: material.id,
+      stepType: 'Registration',
+      fromLocation: 'WAREHOUSE',
+      toLocation: `SECTION_${sectionId}`,
+      unitId: unitIdValue,
+      operationDate: new Date().toISOString(),
+      pcs: quantity,
+      mts: 0,
+      tns: 0,
+      notes: `Материал ${material.name} (${material.code}) зарегистрирован на участке ${sectionId}. Количество: ${quantity} шт.`
+    };
+    
+    console.log('Данные для MaterialRouteSteps:', routeStepData);
+    
+    const routeStepResult = await warehouseService.logMaterialRouteStep(routeStepData);
+    console.log('Результат записи шага:', routeStepResult);
+    
+    // 3. СОЗДАЕМ ЛОКАЛЬНЫЙ ОБЪЕКТ
+    const newPipe = {
+      id: Date.now(),
+      name: material.name,
+      code: material.code,
+      diameter: 0,
+      thickness: 0,
+      length: 6,
+      material: 'Сталь',
+      quantity: quantity,
+      warehouseMaterialId: material.id,
+      unit: typeof material.unit === 'string' 
+        ? material.unit 
+        : (material.unit?.name || material.unit?.code || 'шт.'),
+      currentUnit: sectionId,
+      unitId: unitIdValue,  // Сохраняем числовой ID участка
+      registrationId: routeStepResult.id || `REG-${Date.now()}`,
+      registeredBy: currentUser?.name || 'Неизвестный',
+      registrationDate: new Date().toISOString(),
+      // Сохраняем оригинальные данные
+      originalMaterialData: material
+    };
+    
+    console.log('Создан локальный объект:', newPipe);
+    
+    // 4. ДОБАВЛЯЕМ В ЗАГРУЗОЧНЫЙ КАРМАН
+    setPipes(prev => ({
+      ...prev,
+      loading: [...prev.loading, newPipe]
+    }));
+    
+    // 5. ВЫБИРАЕМ МАТЕРИАЛ
+    setSelectedPipe(newPipe);
+    
+    // 6. УВЕДОМЛЕНИЕ
+    setSnackbar({
+      open: true,
+      message: `✅ Материал "${material.name}" зарегистрирован на участке ${sectionId}`,
+      severity: 'success'
+    });
+    
+    console.log('=== РЕГИСТРАЦИЯ ЗАВЕРШЕНА ===');
+    
+  } catch (error) {
+    console.error('Ошибка регистрации:', error);
+    
+    // ДАЖЕ ЕСЛИ API НЕ РАБОТАЕТ - добавляем локально
+    const newPipe = {
+      id: Date.now(),
+      name: material.name,
+      code: material.code,
+      quantity: quantity,
+      warehouseMaterialId: material.id,
+      currentUnit: sectionId,
+      unitId: parseInt(sectionId.replace('loading', '')) || 1,
+      registrationDate: new Date().toISOString()
+    };
+    
+    setPipes(prev => ({
+      ...prev,
+      loading: [...prev.loading, newPipe]
+    }));
+    
+    setSelectedPipe(newPipe);
+    
+    setSnackbar({
+      open: true,
+      message: `⚠️ Материал добавлен (без обновления в БД)`,
+      severity: 'warning'
+    });
+  } finally {
+    setIsRegistering(false);
+  }
+};
 
   // Переместить трубу из загрузки в выход
   const handleMoveToOutput = async () => {
@@ -1092,6 +1386,66 @@ function SectionPage() {
       });
     }
   };
+  
+  // Кнопка обновить
+  const refreshSectionData = async () => {
+  try {
+    console.log('🔄 Обновление данных участка...');
+    
+    const materials = await warehouseService.getAvailableMaterials();
+    const currentUnitId = sectionToUnitId[sectionId];
+    
+    console.log('Получено материалов:', materials.length);
+    
+    // Форматируем и фильтруем материалы
+    const processedMaterials = materials
+      .map(material => {
+        const unitId = material.unitId || currentUnitId;
+        return {
+          id: material.id,
+          name: material.name,
+          code: material.code,
+          diameter: 0,
+          thickness: 0,
+          length: 6,
+          material: 'Сталь',
+          quantity: material.pcs || 'шт.',          
+          unitId: unitId,
+          warehouseMaterialId: material.id,
+          registrationDate: new Date().toISOString(),
+          registeredBy: 'Оператор Степанов'
+        };
+      })
+      .filter(material => 
+        material.unitId === currentUnitId && 
+        material.unitId !== 11 // Исключаем общий склад
+      );
+    
+    // Обновляем состояние
+    setPipes({
+      loading: processedMaterials,
+      output: [],
+      defect: []
+    });
+    
+    // Уведомление
+    setSnackbar({
+      open: true,
+      message: `✅ Данные обновлены. Найдено материалов: ${processedMaterials.length}`,
+      severity: 'success'
+    });
+    
+    console.log('Обновлено материалов на участке:', processedMaterials.length);
+    
+  } catch (error) {
+    console.error('Ошибка обновления данных:', error);
+    setSnackbar({
+      open: true,
+      message: `❌ Ошибка обновления: ${error.message}`,
+      severity: 'error'
+    });
+  }
+};
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -1105,9 +1459,19 @@ function SectionPage() {
         </Button>
         
         <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ flex: 1 }}>
-          УЧАСТОК {sectionId.toUpperCase()}
-        </Typography>
+  {sectionDisplayName.toUpperCase()}
+</Typography>
         
+		
+		<Button 
+		variant="outlined"
+		startIcon={<RefreshIcon />}
+		onClick={refreshSectionData}
+		sx={{ ml: 2 }}
+		>
+		Обновить данные
+		</Button>
+		
         <Button 
 		variant="outlined"
 		startIcon={<History />}
@@ -1295,6 +1659,7 @@ function SectionPage() {
           </Grid>
         </Grid>
       </Grid>
+	  	 
 
       {/* ДИАЛОГ ВЫБОРА МАТЕРИАЛОВ СО СКЛАДА */}
       <WarehouseDialog
