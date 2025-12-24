@@ -1,4 +1,9 @@
+миграции
 dotnet ef migrations add AddUserFirstNameLastName
 dotnet ef database update
+
+
 бэкап бд
 docker exec mes-backend-postgres pg_dumpall -U postgres > full_backup.sql
+применить бекап
+cat full_backup.sql | docker exec -i mes-backend-postgres psql -U postgres
