@@ -33,6 +33,8 @@ docker exec mes-postgres psql -U postgres -c "CREATE DATABASE production_db;"
 docker exec mes-backend-postgres psql -U postgres -c "CREATE DATABASE materials_db;"
 docker exec mes-postgres psql -U postgres -c "CREATE DATABASE unit_db;"
 
+docker exec mes-backend-postgres psql -U postgres -c "DROP DATABASE materials_db;"
+
 # 5. Запусти всё
 docker-compose up -d
 
