@@ -78,6 +78,12 @@ const SECTION_MAPPING = {
   }
 };
 
+
+const getSectionDisplayName = (sectionId) => {
+  return SECTION_MAPPING[sectionId]?.name || `Участок ${sectionId}`;
+};
+
+
 // Компонент карточки материала
 function MaterialCard({ material, onDelete, isSelected, onSelect }) {
   const getSectionName = (unitId) => {
@@ -902,7 +908,11 @@ const getSelectedMaterialLocation = () => {
     setIsRegistering(true);
     
     try {
-      console.log('Регистрация материала:', material.name, 'количество:', quantity);
+      
+	  const sectionName = SECTION_MAPPING[sectionId]?.name || `участка ${sectionId}`;
+	  console.log('sectionName: ', sectionName);	  
+	  
+	  console.log('Регистрация материала:', material.name, 'количество:', quantity);
       
       // 1. Обновляем материал в БД
       const updateData = {
@@ -924,9 +934,9 @@ const getSelectedMaterialLocation = () => {
       try {
         await logMaterialStep(
           material,
-          'REGISTRATION',
-          'WAREHOUSE',
-          `SECTION_${sectionId}`,
+          'Registration',
+          'Общий склад',
+          `${sectionName}`,
           quantity
         );
       } catch (historyError) {
@@ -1000,8 +1010,8 @@ const getSelectedMaterialLocation = () => {
         await logMaterialStep(
           materialToDelete,
           'RETURN_TO_WAREHOUSE',
-          `SECTION_${sectionId}_${pocket.toUpperCase()}`,
-          'WAREHOUSE',
+          `Участок ${sectionName}`,
+          'Общий склад',
           materialToDelete.quantity
         );
       } catch (historyError) {
@@ -1048,7 +1058,7 @@ const getSelectedMaterialLocation = () => {
     
     try {
       console.log('Перемещение на обработку:', selectedPipe.name);
-      
+      const sectionName = SECTION_MAPPING[sectionId]?.name || `участка ${sectionId}`;
       // 1. Обновляем материал в БД
       if (selectedPipe.warehouseMaterialId) {
         try {
@@ -1069,9 +1079,9 @@ const getSelectedMaterialLocation = () => {
       try {
         await logMaterialStep(
           selectedPipe,
-          'PROCESSING_START',
-          `SECTION_${sectionId}_LOADING`,
-          `SECTION_${sectionId}_OUTPUT`,
+          'Transfer',
+          `${sectionName} Загрузочный карман`,
+          `${sectionName} Выходной карман`,
           selectedPipe.quantity
         );
       } catch (historyError) {
@@ -1120,7 +1130,9 @@ const getSelectedMaterialLocation = () => {
     }
     
     try {
-      // Определяем unitId для брака (например, 990 + текущий unitId)
+	  const sectionName = SECTION_MAPPING[sectionId]?.name || `участка ${sectionId}`;
+      
+	  // Определяем unitId для брака 
       const defectUnitId = sectionConfig.defectUnitId;
       
       // 1. Обновляем материал в БД
@@ -1143,9 +1155,9 @@ const getSelectedMaterialLocation = () => {
       try {
         await logMaterialStep(
           selectedPipe,
-          'MOVE_TO_DEFECT',
-          `SECTION_${sectionId}_LOADING`,
-          `SECTION_${sectionId}_DEFECT`,
+          'WriteOff',
+          `${sectionName} Выходной карман`,
+          `${sectionName} Карман брака`,
           selectedPipe.quantity
         );
       } catch (historyError) {
@@ -1195,7 +1207,8 @@ const handleMoveToNextSection = async (material) => {
 
   try {
     console.log('Перемещение на следующий участок:', material.name, '→', nextSection);
-    
+    const sectionName = SECTION_MAPPING[sectionId]?.name || `участка ${sectionId}`;
+	const nextSectionName = SECTION_MAPPING[nextSection]?.name || `участка ${sectionId}`;
     const nextSectionConfig = SECTION_MAPPING[nextSection];
     if (!nextSectionConfig) {
       throw new Error('Следующий участок не найден');
@@ -1221,9 +1234,9 @@ const handleMoveToNextSection = async (material) => {
     try {
       await logMaterialStep(
         material,
-        'MOVE_TO_NEXT_SECTION',
-        `SECTION_${sectionId}_OUTPUT`,
-        `SECTION_${nextSection}_LOADING`,
+        'Transfer',
+        `${sectionName} Выходной карман`,
+        `${nextSectionName} Загрузочный карман`,
         material.quantity
       );
     } catch (historyError) {
@@ -1260,8 +1273,8 @@ const handleMoveToNextSection = async (material) => {
 // ПЕРЕМЕСТИТЬ В БРАК ИЗ ВЫХОДНОГО КАРМАНА
 const handleMoveToDefectFromOutput = async (material) => {
   try {
-    const defectUnitId = sectionConfig.defectUnitId || 990 + currentUnitId;
-    
+    const defectUnitId = sectionConfig.defectUnitId;
+    const sectionName = SECTION_MAPPING[sectionId]?.name || `участка ${sectionId}`;
     console.log('Перемещение в брак из выходного кармана:', material.name);
     
     // 1. Обновляем материал в БД
@@ -1283,12 +1296,12 @@ const handleMoveToDefectFromOutput = async (material) => {
     // 2. Записываем в историю
     try {
       await logMaterialStep(
-        material,
-        'MOVE_TO_DEFECT',
-        `SECTION_${sectionId}_OUTPUT`,
-        `SECTION_${sectionId}_DEFECT`,
-        material.quantity
-      );
+          selectedPipe,
+          'WriteOff',
+          `${sectionName} Выходной карман`,
+          `${sectionName} Карман брака`,
+          selectedPipe.quantity
+        );
     } catch (historyError) {
       console.warn('Не удалось записать в историю:', historyError);
     }
