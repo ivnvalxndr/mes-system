@@ -40,16 +40,42 @@ import {
   Inventory as InventoryIcon,
   Refresh as RefreshIcon,
   History,
-  Check as CheckIcon
+  Check as CheckIcon,
+  ArrowForward as ArrowForwardIcon,
+  Close as CloseIcon 
 } from '@mui/icons-material';
 import LinearProgress from '@mui/material/LinearProgress';
 
 // Маппинг участков
 const SECTION_MAPPING = {
-  'loading1': { unitId: 3, outputUnitId: 12, name: 'Загрузка труб' },
-  'sorting1': { unitId: 6, outputUnitId: 13, name: 'Сортировка' },
-  'packing1': { unitId: 10, outputUnitId: 14, name: 'Упаковка' },
-  'nmk1': { unitId: 5, outputUnitId: 15, name: 'НМК' }
+  'loading1': { 
+    unitId: 3, 
+    outputUnitId: 12, 
+    defectUnitId: 13, // Карман брака для загрузки
+    name: 'Загрузка труб',
+    nextSection: 'sorting1'  // Следующий участок
+  },
+  'sorting1': { 
+    unitId: 6, 
+    outputUnitId: 13, 
+    defectUnitId: 991, // Карман брака для сортировки
+    name: 'Сортировка',
+    nextSection: 'packing1'
+  },
+  'packing1': { 
+    unitId: 10, 
+    outputUnitId: 14, 
+    defectUnitId: 992, // Карман брака для упаковки
+    name: 'Упаковка',
+    nextSection: 'nmk1'
+  },
+  'nmk1': { 
+    unitId: 5, 
+    outputUnitId: 15, 
+    defectUnitId: 993, // Карман брака для НМК
+    name: 'НМК',
+    nextSection: null  // Последний участок
+  }
 };
 
 // Компонент карточки материала
@@ -64,7 +90,11 @@ function MaterialCard({ material, onDelete, isSelected, onSelect }) {
       13: 'Выходной карман (Сортировка)',
       14: 'Выходной карман (Упаковка)',
       15: 'Выходной карман (НМК)',
-      11: 'Общий склад'
+      11: 'Общий склад',
+      990: 'Брак (Загрузка)',
+      991: 'Брак (Сортировка)',
+      992: 'Брак (Упаковка)',
+      993: 'Брак (НМК)'
     };
     return sections[unitId] || `Участок #${unitId}`;
   };
@@ -110,7 +140,11 @@ function MaterialCard({ material, onDelete, isSelected, onSelect }) {
             <Typography variant="body2" color="text.secondary">
               Код: {material.code}
             </Typography>
-            <Typography variant="caption" color="primary" sx={{ display: 'block', mt: 0.5 }}>
+            <Typography 
+              variant="caption" 
+              color={material.unitId >= 990 ? 'error' : 'primary'} 
+              sx={{ display: 'block', mt: 0.5 }}
+            >
               {sectionName}
             </Typography>
           </Box>
@@ -160,6 +194,15 @@ function MaterialCard({ material, onDelete, isSelected, onSelect }) {
                 Принял: {material.registeredBy}
               </Typography>
             )}
+          </Box>
+        )}
+        
+        {/* Для кармана брака показываем статус */}
+        {material.unitId >= 990 && (
+          <Box sx={{ mt: 2, p: 1, bgcolor: 'error.light', borderRadius: 1 }}>
+            <Typography variant="caption" color="error.dark" fontWeight="bold">
+              ⚠️ БРАК
+            </Typography>
           </Box>
         )}
       </CardContent>
@@ -622,14 +665,22 @@ function SectionPage() {
   const { sectionId } = useParams();
   const navigate = useNavigate();
   
-  // Получаем настройки участка
+ // Получаем настройки участка
   const sectionConfig = SECTION_MAPPING[sectionId] || { 
     unitId: 0, 
     outputUnitId: 12, 
-    name: `Участок ${sectionId}` 
+    defectUnitId: 990, 
+    name: `Участок ${sectionId}`,
+    nextSection: null
   };
   
-  const { unitId: currentUnitId, outputUnitId, name: sectionDisplayName } = sectionConfig;
+  const { 
+    unitId: currentUnitId, 
+    outputUnitId, 
+    defectUnitId, 
+    name: sectionDisplayName,
+    nextSection 
+  } = sectionConfig;
   
   // Состояние материалов по карманам
   const [materials, setMaterials] = useState({
@@ -686,9 +737,7 @@ function SectionPage() {
       // Распределяем материалы по карманам
       const loadingMaterials = allMaterials.filter(m => m.unitId === currentUnitId);
       const outputMaterials = allMaterials.filter(m => m.unitId === outputUnitId);
-      const defectMaterials = allMaterials.filter(m => 
-        m.unitId && m.unitId.toString().startsWith('99') // Пример для брака
-      );
+      const defectMaterials = allMaterials.filter(m => m.unitId === defectUnitId);
       
       // Форматируем материалы
       const formatMaterial = (item) => ({
@@ -1058,7 +1107,7 @@ function SectionPage() {
     
     try {
       // Определяем unitId для брака (например, 990 + текущий unitId)
-      const defectUnitId = 990 + currentUnitId;
+      const defectUnitId = sectionConfig.defectUnitId;
       
       // 1. Обновляем материал в БД
       if (selectedPipe.warehouseMaterialId) {
@@ -1118,6 +1167,150 @@ function SectionPage() {
       });
     }
   };
+  
+  // ПЕРЕМЕСТИТЬ НА СЛЕДУЮЩИЙ УЧАСТОК
+const handleMoveToNextSection = async (material) => {
+  if (!nextSection) {
+    setSnackbar({
+      open: true,
+      message: 'Это последний участок в цепочке',
+      severity: 'warning'
+    });
+    return;
+  }
+
+  try {
+    console.log('Перемещение на следующий участок:', material.name, '→', nextSection);
+    
+    const nextSectionConfig = SECTION_MAPPING[nextSection];
+    if (!nextSectionConfig) {
+      throw new Error('Следующий участок не найден');
+    }
+
+    // 1. Обновляем материал в БД
+    if (material.warehouseMaterialId) {
+      try {
+        const updateData = {
+          unitId: nextSectionConfig.unitId,
+          code: material.code,
+          name: material.name,
+          pcs: material.quantity
+        };
+        
+        await warehouseService.updateMaterial(material.warehouseMaterialId, updateData);
+      } catch (updateError) {
+        console.warn('Не удалось обновить материал в БД:', updateError);
+      }
+    }
+    
+    // 2. Записываем в историю
+    try {
+      await logMaterialStep(
+        material,
+        'MOVE_TO_NEXT_SECTION',
+        `SECTION_${sectionId}_OUTPUT`,
+        `SECTION_${nextSection}_LOADING`,
+        material.quantity
+      );
+    } catch (historyError) {
+      console.warn('Не удалось записать в историю:', historyError);
+    }
+    
+    // 3. Удаляем из локального состояния текущего участка
+    setMaterials(prev => ({
+      ...prev,
+      output: prev.output.filter(m => m.id !== material.id)
+    }));
+    
+    // 4. Если выделен этот материал, снимаем выделение
+    if (selectedPipe?.id === material.id) {
+      setSelectedPipe(null);
+    }
+    
+    setSnackbar({
+      open: true,
+      message: `Материал "${material.name}" перемещен на участок ${nextSectionConfig.name}`,
+      severity: 'success'
+    });
+    
+  } catch (error) {
+    console.error('Ошибка перемещения на следующий участок:', error);
+    setSnackbar({
+      open: true,
+      message: `Ошибка: ${error.message}`,
+      severity: 'error'
+    });
+  }
+};
+
+// ПЕРЕМЕСТИТЬ В БРАК ИЗ ВЫХОДНОГО КАРМАНА
+const handleMoveToDefectFromOutput = async (material) => {
+  try {
+    const defectUnitId = sectionConfig.defectUnitId || 990 + currentUnitId;
+    
+    console.log('Перемещение в брак из выходного кармана:', material.name);
+    
+    // 1. Обновляем материал в БД
+    if (material.warehouseMaterialId) {
+      try {
+        const updateData = {
+          unitId: defectUnitId,
+          code: material.code,
+          name: material.name,
+          pcs: material.quantity
+        };
+        
+        await warehouseService.updateMaterial(material.warehouseMaterialId, updateData);
+      } catch (updateError) {
+        console.warn('Не удалось обновить материал в БД:', updateError);
+      }
+    }
+    
+    // 2. Записываем в историю
+    try {
+      await logMaterialStep(
+        material,
+        'MOVE_TO_DEFECT',
+        `SECTION_${sectionId}_OUTPUT`,
+        `SECTION_${sectionId}_DEFECT`,
+        material.quantity
+      );
+    } catch (historyError) {
+      console.warn('Не удалось записать в историю:', historyError);
+    }
+    
+    // 3. Обновляем локальное состояние
+    const updatedMaterial = {
+      ...material,
+      unitId: defectUnitId
+    };
+    
+    setMaterials(prev => ({
+      loading: prev.loading,
+      output: prev.output.filter(m => m.id !== material.id),
+      defect: [...prev.defect, updatedMaterial]
+    }));
+    
+    // 4. Если выделен этот материал, снимаем выделение
+    if (selectedPipe?.id === material.id) {
+      setSelectedPipe(null);
+    }
+    
+    setSnackbar({
+      open: true,
+      message: `Материал "${material.name}" перемещен в брак`,
+      severity: 'warning'
+    });
+    
+  } catch (error) {
+    console.error('Ошибка перемещения в брак:', error);
+    setSnackbar({
+      open: true,
+      message: `Ошибка: ${error.message}`,
+      severity: 'error'
+    });
+  }
+};
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -1222,11 +1415,14 @@ function SectionPage() {
                 materials.loading.map((material) => (
                   <Grid item xs={12} key={material.id}>
                     <MaterialCard
-                      material={material}
-                      onDelete={(id) => handleDeleteMaterial('loading', id)}
-                      isSelected={selectedPipe?.id === material.id}
-                      onSelect={setSelectedPipe}
-                    />
+					  material={material}
+					  onDelete={(id) => handleDeleteMaterial('loading', id)}
+					  isSelected={selectedPipe?.id === material.id}
+					  onSelect={setSelectedPipe}
+					  sectionType="loading"
+					  onMoveToNextSection={handleMoveToOutput} // Существующая функция
+					  onMoveToDefect={handleMoveToDefect} // Существующая функция
+					/>
                   </Grid>
                 ))
               )}
@@ -1267,52 +1463,113 @@ function SectionPage() {
             
             {/* ВЫХОДНОЙ КАРМАН */}
             <Grid item xs={12}>
-              <Paper sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CheckCircle color="success" sx={{ mr: 1 }} />
-                  <Typography variant="h6" fontWeight="bold" color="success">
-                    ВЫХОДНОЙ КАРМАН
-                    <Chip 
-                      label={`${materials.output.length} материалов`}
-                      size="small"
-                      sx={{ ml: 2 }}
-                    />
-                  </Typography>
-                </Box>
-                
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  {materials.output.length === 0 ? (
-                    <Grid item xs={12}>
-                      <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'grey.50', borderRadius: 1 }}>
-                        <Typography color="text.secondary">
-                          Нет материалов в выходном кармане
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  ) : (
-                    materials.output.map((material) => (
-                      <Grid item xs={12} sm={6} md={4} key={material.id}>
-                        <MaterialCard
-                          material={material}
-                          onDelete={(id) => handleDeleteMaterial('output', id)}
-                          isSelected={selectedPipe?.id === material.id}
-                          onSelect={setSelectedPipe}
-                        />
-                      </Grid>
-                    ))
-                  )}
-                </Grid>
-                
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button variant="contained" color="success">
-                    Отгрузить
-                  </Button>
-                  <Button variant="outlined">
-                    Переупаковать
-                  </Button>
-                </Box>
-              </Paper>
-            </Grid>
+  <Paper sx={{ p: 3 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+      <CheckCircle color="success" sx={{ mr: 1 }} />
+      <Typography variant="h6" fontWeight="bold" color="success">
+        ВЫХОДНОЙ КАРМАН
+        <Chip 
+          label={`${materials.output.length} материалов`}
+          size="small"
+          sx={{ ml: 2 }}
+        />
+        {nextSection && (
+          <Chip 
+            label={`Далее: ${SECTION_MAPPING[nextSection]?.name || nextSection}`}
+            size="small"
+            color="info"
+            sx={{ ml: 1 }}
+          />
+        )}
+      </Typography>
+    </Box>
+    
+    <Grid container spacing={2} sx={{ mb: 3 }}>
+      {materials.output.length === 0 ? (
+        <Grid item xs={12}>
+          <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography color="text.secondary">
+              Нет материалов в выходном кармане
+            </Typography>
+          </Box>
+        </Grid>
+      ) : (
+        materials.output.map((material) => (
+          <Grid item xs={12} sm={6} md={4} key={material.id}>
+            <MaterialCard
+              material={material}
+              onDelete={(id) => handleDeleteMaterial('output', id)}
+              isSelected={selectedPipe?.id === material.id}
+              onSelect={setSelectedPipe}
+            />
+          </Grid>
+        ))
+      )}
+    </Grid>
+    
+    {/* Кнопки управления для выходного кармана */}
+    <Box sx={{ display: 'flex', gap: 2 }}>
+      <Button 
+        variant="contained" 
+        color="success"
+        startIcon={<ArrowForwardIcon />}
+        onClick={() => {
+          if (!selectedPipe) {
+            setSnackbar({
+              open: true,
+              message: 'Выберите материал для перемещения',
+              severity: 'warning'
+            });
+            return;
+          }
+          // Проверяем, что выбранный материал в выходном кармане
+          const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
+          if (!isInOutput) {
+            setSnackbar({
+              open: true,
+              message: 'Выбранный материал не находится в выходном кармане',
+              severity: 'warning'
+            });
+            return;
+          }
+          handleMoveToNextSection(selectedPipe);
+        }}
+        disabled={!selectedPipe || !nextSection}
+      >
+        Переместить на следующий участок
+      </Button>
+      <Button 
+        variant="outlined" 
+        color="error"
+        startIcon={<CloseIcon />}
+        onClick={() => {
+          if (!selectedPipe) {
+            setSnackbar({
+              open: true,
+              message: 'Выберите материал для перемещения в брак',
+              severity: 'warning'
+            });
+            return;
+          }
+          // Проверяем, что выбранный материал в выходном кармане
+          const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
+          if (!isInOutput) {
+            setSnackbar({
+              open: true,
+              message: 'Выбранный материал не находится в выходном кармане',
+              severity: 'warning'
+            });
+            return;
+          }
+          handleMoveToDefectFromOutput(selectedPipe);
+        }}
+        disabled={!selectedPipe}
+      >
+        Переместить в брак
+      </Button>
+    </Box>
+  </Paper>
+</Grid>
 
             {/* КАРМАН БРАКА */}
             <Grid item xs={12}>
@@ -1342,11 +1599,12 @@ function SectionPage() {
                     materials.defect.map((material) => (
                       <Grid item xs={12} sm={6} md={4} key={material.id}>
                         <MaterialCard
-                          material={material}
-                          onDelete={(id) => handleDeleteMaterial('defect', id)}
-                          isSelected={selectedPipe?.id === material.id}
-                          onSelect={setSelectedPipe}
-                        />
+						  material={material}
+						  onDelete={(id) => handleDeleteMaterial('defect', id)}
+						  isSelected={selectedPipe?.id === material.id}
+						  onSelect={setSelectedPipe}
+						  sectionType="defect"						 
+						/>
                       </Grid>
                     ))
                   )}
