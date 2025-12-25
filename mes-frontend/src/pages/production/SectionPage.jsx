@@ -718,11 +718,25 @@ function SectionPage() {
       console.error('Ошибка загрузки пользователя:', error);
       setCurrentUser({
         id: 1,
-        name: 'Оператор Степанов',
+        name: 'Александр Иванов',
         role: 'operator'
       });
     }
   };
+  
+  // Функция для проверки, где находится выбранный материал
+const getSelectedMaterialLocation = () => {
+  if (!selectedPipe) return null;
+  
+  if (materials.loading.some(m => m.id === selectedPipe.id)) {
+    return 'loading';
+  } else if (materials.output.some(m => m.id === selectedPipe.id)) {
+    return 'output';
+  } else if (materials.defect.some(m => m.id === selectedPipe.id)) {
+    return 'defect';
+  }
+  return null;
+};
 
   // ЗАГРУЗКА МАТЕРИАЛОВ УЧАСТКА
   const loadSectionMaterials = async () => {
@@ -807,7 +821,7 @@ function SectionPage() {
         toLocation: step.toLocation,
         unitId: step.unitId,
         userId: step.userId || 0,
-        userName: step.userName || 'Неизвестно',
+        userName: step.userName || 'Александр Иванов',
         status: 'success',
         notes: step.notes
       }));
@@ -1430,30 +1444,39 @@ const handleMoveToDefectFromOutput = async (material) => {
             
             {/* Кнопки управления */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Button 
-                variant="contained" 
-                startIcon={<AddIcon />}
-                onClick={() => setWarehouseDialogOpen(true)}
-                disabled={isRegistering}
-              >
-                Зарегистрировать пакет
-              </Button>
-              <Button 
-                variant="outlined"
-                onClick={handleMoveToOutput}
-                disabled={!selectedPipe || isRegistering}
-              >
-                Начать обработку
-              </Button>
-              <Button 
-                variant="outlined" 
-                color="error"
-                onClick={handleMoveToDefect}
-                disabled={!selectedPipe || isRegistering}
-              >
-                Переместить в брак
-              </Button>
-            </Box>
+			  <Button 
+				variant="contained" 
+				startIcon={<AddIcon />}
+				onClick={() => setWarehouseDialogOpen(true)}
+				disabled={isRegistering}
+			  >
+				Зарегистрировать пакет
+			  </Button>
+              {selectedPipe && getSelectedMaterialLocation() === 'loading' && (
+    <>
+      <Button 
+        variant="contained"
+        color="primary"
+        startIcon={<ArrowForwardIcon />}
+        onClick={() => handleMoveToOutput()}
+        disabled={isRegistering}
+        fullWidth
+      >
+        Начать обработку "{selectedPipe.name}"
+      </Button>
+      <Button 
+        variant="outlined" 
+        color="error"
+        startIcon={<CloseIcon />}
+        onClick={() => handleMoveToDefect()}
+        disabled={isRegistering}
+        fullWidth
+      >
+        Переместить "{selectedPipe.name}" в брак
+      </Button>
+    </>
+  )}
+</Box>
           </Paper>
         </Grid>
 
@@ -1509,65 +1532,67 @@ const handleMoveToDefectFromOutput = async (material) => {
     
     {/* Кнопки управления для выходного кармана */}
     <Box sx={{ display: 'flex', gap: 2 }}>
-      <Button 
-        variant="contained" 
-        color="success"
-        startIcon={<ArrowForwardIcon />}
-        onClick={() => {
-          if (!selectedPipe) {
-            setSnackbar({
-              open: true,
-              message: 'Выберите материал для перемещения',
-              severity: 'warning'
-            });
-            return;
-          }
-          // Проверяем, что выбранный материал в выходном кармане
-          const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
-          if (!isInOutput) {
-            setSnackbar({
-              open: true,
-              message: 'Выбранный материал не находится в выходном кармане',
-              severity: 'warning'
-            });
-            return;
-          }
-          handleMoveToNextSection(selectedPipe);
-        }}
-        disabled={!selectedPipe || !nextSection}
-      >
-        Переместить на следующий участок
-      </Button>
-      <Button 
-        variant="outlined" 
-        color="error"
-        startIcon={<CloseIcon />}
-        onClick={() => {
-          if (!selectedPipe) {
-            setSnackbar({
-              open: true,
-              message: 'Выберите материал для перемещения в брак',
-              severity: 'warning'
-            });
-            return;
-          }
-          // Проверяем, что выбранный материал в выходном кармане
-          const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
-          if (!isInOutput) {
-            setSnackbar({
-              open: true,
-              message: 'Выбранный материал не находится в выходном кармане',
-              severity: 'warning'
-            });
-            return;
-          }
-          handleMoveToDefectFromOutput(selectedPipe);
-        }}
-        disabled={!selectedPipe}
-      >
-        Переместить в брак
-      </Button>
-    </Box>
+  <Button 
+    variant="contained" 
+    color="success"
+    startIcon={<ArrowForwardIcon />}
+    onClick={() => {
+      if (!selectedPipe) {
+        setSnackbar({
+          open: true,
+          message: 'Выберите материал для перемещения',
+          severity: 'warning'
+        });
+        return;
+      }
+      // Проверяем, что выбранный материал в выходном кармане
+      const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
+      if (!isInOutput) {
+        setSnackbar({
+          open: true,
+          message: 'Выбранный материал не находится в выходном кармане',
+          severity: 'warning'
+        });
+        return;
+      }
+      handleMoveToNextSection(selectedPipe);
+    }}
+    disabled={!selectedPipe || !nextSection || getSelectedMaterialLocation() !== 'output'}
+    sx={{ flex: 1 }}
+  >
+    Переместить на следующий участок
+  </Button>
+  <Button 
+    variant="outlined" 
+    color="error"
+    startIcon={<CloseIcon />}
+    onClick={() => {
+      if (!selectedPipe) {
+        setSnackbar({
+          open: true,
+          message: 'Выберите материал для перемещения в брак',
+          severity: 'warning'
+        });
+        return;
+      }
+      // Проверяем, что выбранный материал в выходном кармане
+      const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
+      if (!isInOutput) {
+        setSnackbar({
+          open: true,
+          message: 'Выбранный материал не находится в выходном кармане',
+          severity: 'warning'
+        });
+        return;
+      }
+      handleMoveToDefectFromOutput(selectedPipe);
+    }}
+    disabled={!selectedPipe || getSelectedMaterialLocation() !== 'output'}
+    sx={{ flex: 1 }}
+  >
+    Переместить в брак
+  </Button>
+</Box>
   </Paper>
 </Grid>
 
