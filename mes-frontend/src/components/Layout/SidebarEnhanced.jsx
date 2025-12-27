@@ -45,7 +45,6 @@ function SidebarEnhanced() {
 
   const menuItems = [
     { text: 'Главная', icon: <DashboardIcon />, path: '/' },
-    { text: 'Материалы', icon: <MaterialsIcon />, path: '/materials' },
     { 
       text: 'Производство', 
       icon: <ProductionIcon />,

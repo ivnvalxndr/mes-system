@@ -35,6 +35,7 @@ import { warehouseService } from '../services/warehouseService';
 // Константы для складов
 const GENERAL_WAREHOUSE_ID = 11;
 const DEFECT_WAREHOUSE_ID = 14;
+const FINISHED_GOODS_WAREHOUSE_ID = 15;
 
 function WarehouseTabPanel({ children, value, index, ...other }) {
   return (
@@ -55,10 +56,13 @@ function WarehousePage() {
   const [tabValue, setTabValue] = useState(0);
   const [generalMaterials, setGeneralMaterials] = useState([]);
   const [defectMaterials, setDefectMaterials] = useState([]);
+  const [finishedGoodsMaterials, setFinishedGoodsMaterials] = useState([]);
   const [filteredGeneral, setFilteredGeneral] = useState([]);
   const [filteredDefect, setFilteredDefect] = useState([]);
+  const [filteredFinishedGoods, setFilteredFinishedGoods] = useState([]);
   const [searchGeneral, setSearchGeneral] = useState('');
   const [searchDefect, setSearchDefect] = useState('');
+  const [searchFinishedGoods, setSearchFinishedGoods] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -69,6 +73,8 @@ function WarehousePage() {
       setTabValue(0);
     } else if (hash === '#defect') {
       setTabValue(1);
+    } else if (hash === '#finished-goods') {
+      setTabValue(2);
     }
   }, [location.hash]);
 
@@ -104,6 +110,20 @@ function WarehousePage() {
     }
   }, [searchDefect, defectMaterials]);
 
+  useEffect(() => {
+    // Фильтрация материалов склада готовой продукции
+    if (searchFinishedGoods) {
+      const filtered = finishedGoodsMaterials.filter(
+        (material) =>
+          material.name?.toLowerCase().includes(searchFinishedGoods.toLowerCase()) ||
+          material.code?.toLowerCase().includes(searchFinishedGoods.toLowerCase())
+      );
+      setFilteredFinishedGoods(filtered);
+    } else {
+      setFilteredFinishedGoods(finishedGoodsMaterials);
+    }
+  }, [searchFinishedGoods, finishedGoodsMaterials]);
+
   const loadMaterials = async () => {
     setLoading(true);
     setError(null);
@@ -116,6 +136,9 @@ function WarehousePage() {
       );
       const defect = allMaterials.filter(
         (item) => item.unitId === DEFECT_WAREHOUSE_ID
+      );
+      const finishedGoods = allMaterials.filter(
+        (item) => item.unitId === FINISHED_GOODS_WAREHOUSE_ID
       );
 
       // Форматируем материалы
@@ -131,8 +154,10 @@ function WarehousePage() {
 
       setGeneralMaterials(general.map(formatMaterial));
       setDefectMaterials(defect.map(formatMaterial));
+      setFinishedGoodsMaterials(finishedGoods.map(formatMaterial));
       setFilteredGeneral(general.map(formatMaterial));
       setFilteredDefect(defect.map(formatMaterial));
+      setFilteredFinishedGoods(finishedGoods.map(formatMaterial));
     } catch (err) {
       console.error('Ошибка загрузки материалов:', err);
       setError(`Ошибка загрузки: ${err.message}`);
@@ -144,7 +169,14 @@ function WarehousePage() {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     // Обновляем hash в URL
-    const hash = newValue === 0 ? '#general' : '#defect';
+    let hash;
+    if (newValue === 0) {
+      hash = '#general';
+    } else if (newValue === 1) {
+      hash = '#defect';
+    } else if (newValue === 2) {
+      hash = '#finished-goods';
+    }
     window.location.hash = hash;
   };
 
@@ -233,7 +265,7 @@ function WarehousePage() {
 
       {/* Статистика */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={4}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -253,7 +285,7 @@ function WarehousePage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={4}>
           <Card sx={{ bgcolor: '#fff5f5' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -273,6 +305,26 @@ function WarehousePage() {
             </CardContent>
           </Card>
         </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card sx={{ bgcolor: '#f0f8ff' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Склад готовой продукции
+                  </Typography>
+                  <Typography variant="h4" fontWeight="bold" color="success">
+                    {finishedGoodsMaterials.length}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {finishedGoodsMaterials.reduce((sum, m) => sum + m.quantity, 0).toLocaleString('ru-RU')} единиц
+                  </Typography>
+                </Box>
+                <WarehouseIcon sx={{ fontSize: 48, color: 'success.main', opacity: 0.3 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
       {/* Вкладки */}
@@ -281,6 +333,7 @@ function WarehousePage() {
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="warehouse tabs">
             <Tab label={`Общий склад (Unit ${GENERAL_WAREHOUSE_ID})`} />
             <Tab label={`Склад брака (Unit ${DEFECT_WAREHOUSE_ID})`} />
+            <Tab label={`Склад готовой продукции (Unit ${FINISHED_GOODS_WAREHOUSE_ID})`} />
           </Tabs>
           <IconButton onClick={loadMaterials} disabled={loading} title="Обновить данные">
             <RefreshIcon />
@@ -350,6 +403,40 @@ function WarehousePage() {
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Общее количество: {filteredDefect.reduce((sum, m) => sum + m.quantity, 0).toLocaleString('ru-RU')} единиц
+              </Typography>
+            </Box>
+          </Box>
+        </WarehouseTabPanel>
+
+        {/* Вкладка Склад готовой продукции */}
+        <WarehouseTabPanel value={tabValue} index={2}>
+          <Box sx={{ p: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="Поиск по названию или коду..."
+              value={searchFinishedGoods}
+              onChange={(e) => setSearchFinishedGoods(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 3 }}
+            />
+
+            {renderMaterialsTable(
+              filteredFinishedGoods,
+              'На складе готовой продукции нет материалов'
+            )}
+
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Всего материалов: {filteredFinishedGoods.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Общее количество: {filteredFinishedGoods.reduce((sum, m) => sum + m.quantity, 0).toLocaleString('ru-RU')} единиц
               </Typography>
             </Box>
           </Box>

@@ -41,6 +41,7 @@ function Sidebar() {
   const warehouses = [
     { id: 'general', name: 'Общий склад', unitId: 11 },
     { id: 'defect', name: 'Склад брака', unitId: 14 },
+    { id: 'finished-goods', name: 'Склад готовой продукции', unitId: 15 },
   ];
 
   // Автоматически открываем меню если на странице производства или складов
@@ -55,7 +56,6 @@ function Sidebar() {
 
   const menuItems = [
     { text: 'Главная', icon: <DashboardIcon />, path: '/' },
-    { text: 'Материалы', icon: <MaterialsIcon />, path: '/materials' },
     { 
       text: 'Производство', 
       icon: <ProductionIcon />,

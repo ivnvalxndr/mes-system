@@ -66,6 +66,7 @@ const SECTION_MAPPING = {
     unitId: 9, 
     outputUnitId: 14, 
     defectUnitId: 992, // Карман брака для упаковки
+    finishedGoodsUnitId: 15, // Склад готовой продукции
     name: 'Упаковка',
     nextSection: null  // Последний участок
   }
@@ -76,6 +77,19 @@ const getSectionDisplayName = (sectionId) => {
   return SECTION_MAPPING[sectionId]?.name || `Участок ${sectionId}`;
 };
 
+
+// Функция для получения русского названия типа операции
+const getOperationTypeTitle = (operationType) => {
+  const typeMapping = {
+    'Receipt': 'Поступление',
+    'Registration': 'Регистрация', 
+    'Transfer': 'Перемещение',
+    'Consumption': 'Расход',
+    'Return': 'Возврат',
+    'WriteOff': 'Списание'
+  };
+  return typeMapping[operationType] || operationType;
+};
 
 // Компонент карточки материала
 function MaterialCard({ material, onDelete, isSelected, onSelect }) {
@@ -88,7 +102,9 @@ function MaterialCard({ material, onDelete, isSelected, onSelect }) {
       13: 'Выходной карман (Сортировка)',
       14: 'Выходной карман (Упаковка)',
       11: 'Общий склад',
+      15: 'Склад готовой продукции',
       19: 'Склад брака',
+      20: 'Склад готовой продукции',
       990: 'Брак (Загрузка)',
       991: 'Брак (Сортировка)',
       992: 'Брак (Упаковка)'
@@ -525,22 +541,14 @@ function QuantityDialog({ open, onClose, material, onConfirm }) {
 
 // ДИАЛОГ ИСТОРИИ ОПЕРАЦИЙ
 function MaterialHistoryDialog({ open, onClose, material, operations, loading }) {
-  const getOperationTitle = (operationType) => {
-    switch(operationType) {
-      case 'REGISTRATION': return 'Регистрация на участке';
-      case 'PROCESSING_START': return 'Начало обработки';
-      case 'MOVE_TO_DEFECT': return 'Перемещение в брак';
-      case 'RETURN_TO_WAREHOUSE': return 'Возврат на склад';
-      default: return operationType;
-    }
-  };
-
   const getOperationColor = (operationType) => {
     switch(operationType) {
-      case 'REGISTRATION': return 'primary';
-      case 'PROCESSING_START': return 'success';
-      case 'MOVE_TO_DEFECT': return 'error';
-      case 'RETURN_TO_WAREHOUSE': return 'warning';
+      case 'Receipt': return 'primary';
+      case 'Registration': return 'success';
+      case 'Transfer': return 'info';
+      case 'Consumption': return 'warning';
+      case 'Return': return 'secondary';
+      case 'WriteOff': return 'error';
       default: return 'default';
     }
   };
@@ -610,7 +618,7 @@ function MaterialHistoryDialog({ open, onClose, material, operations, loading })
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={getOperationTitle(op.operationType || op.stepType)}
+                        label={getOperationTypeTitle(op.operationType || op.stepType)}
                         size="small" 
                         color={getOperationColor(op.operationType || op.stepType)}
                       />
@@ -1330,6 +1338,178 @@ const handleMoveToDefectFromOutput = async (material) => {
   }
 };
 
+// ПЕРЕМЕСТИТЬ НА СКЛАД БРАКА (UNITID-19) ПРИ СПИСАНИИ
+const handleWriteOffToDefectWarehouse = async () => {
+  if (!selectedPipe) {
+    setSnackbar({
+      open: true,
+      message: 'Выберите материал для списания',
+      severity: 'warning'
+    });
+    return;
+  }
+  
+  // Проверяем, что выбранный материал в кармане брака
+  const isInDefect = materials.defect.some(m => m.id === selectedPipe.id);
+  if (!isInDefect) {
+    setSnackbar({
+      open: true,
+      message: 'Выбранный материал не находится в кармане брака',
+      severity: 'warning'
+    });
+    return;
+  }
+  
+  try {
+    const sectionName = SECTION_MAPPING[sectionId]?.name || `участка ${sectionId}`;
+    console.log('Списание материала на склад брака:', selectedPipe.name);
+    
+    // 1. Обновляем материал в БД - перемещаем на склад брака (UNITID-19)
+    if (selectedPipe.warehouseMaterialId) {
+      try {
+        const updateData = {
+          unitId: 14, // Склад брака
+          code: selectedPipe.code,
+          name: selectedPipe.name,
+          pcs: selectedPipe.quantity
+        };
+        
+        await warehouseService.updateMaterial(selectedPipe.warehouseMaterialId, updateData);
+      } catch (updateError) {
+        console.warn('Не удалось обновить материал в БД:', updateError);
+      }
+    }
+    
+    // 2. Записываем в историю
+    try {
+      await logMaterialStep(
+        selectedPipe,
+        'WriteOff',
+        `${sectionName} Карман брака`,
+        'Склад брака',
+        selectedPipe.quantity
+      );
+    } catch (historyError) {
+      console.warn('Не удалось записать в историю:', historyError);
+    }
+    
+    // 3. Обновляем локальное состояние - удаляем из кармана брака
+    setMaterials(prev => ({
+      loading: prev.loading,
+      output: prev.output,
+      defect: prev.defect.filter(m => m.id !== selectedPipe.id)
+    }));
+    
+    // 4. Снимаем выделение
+    setSelectedPipe(null);
+    
+    setSnackbar({
+      open: true,
+      message: `Материал "${selectedPipe.name}" списан на склад брака`,
+      severity: 'success'
+    });
+    
+  } catch (error) {
+    console.error('Ошибка списания на склад брака:', error);
+    setSnackbar({
+      open: true,
+      message: `Ошибка: ${error.message}`,
+      severity: 'error'
+    });
+  }
+};
+
+// ПЕРЕМЕСТИТЬ НА СКЛАД ГОТОВОЙ ПРОДУКЦИИ (UNITID-15)
+const handleMoveToFinishedGoods = async () => {
+  if (!selectedPipe) {
+    setSnackbar({
+      open: true,
+      message: 'Выберите материал для перемещения',
+      severity: 'warning'
+    });
+    return;
+  }
+  
+  // Проверяем, что выбранный материал в выходном кармане
+  const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
+  if (!isInOutput) {
+    setSnackbar({
+      open: true,
+      message: 'Выбранный материал не находится в выходном кармане',
+      severity: 'warning'
+    });
+    return;
+  }
+  
+  // Проверяем, что это участок упаковки (у него есть finishedGoodsUnitId)
+  if (!sectionConfig.finishedGoodsUnitId) {
+    setSnackbar({
+      open: true,
+      message: 'На этом участке нет склада готовой продукции',
+      severity: 'warning'
+    });
+    return;
+  }
+  
+  try {
+    const sectionName = SECTION_MAPPING[sectionId]?.name || `участка ${sectionId}`;
+    console.log('Перемещение на склад готовой продукции:', selectedPipe.name);
+    
+    // 1. Обновляем материал в БД - перемещаем на склад готовой продукции (UNITID-15)
+    if (selectedPipe.warehouseMaterialId) {
+      try {
+        const updateData = {
+          unitId: sectionConfig.finishedGoodsUnitId, // 15
+          code: selectedPipe.code,
+          name: selectedPipe.name,
+          pcs: selectedPipe.quantity
+        };
+        
+        await warehouseService.updateMaterial(selectedPipe.warehouseMaterialId, updateData);
+      } catch (updateError) {
+        console.warn('Не удалось обновить материал в БД:', updateError);
+      }
+    }
+    
+    // 2. Записываем в историю
+    try {
+      await logMaterialStep(
+        selectedPipe,
+        'Transfer',
+        `${sectionName} Выходной карман`,
+        'Склад готовой продукции',
+        selectedPipe.quantity
+      );
+    } catch (historyError) {
+      console.warn('Не удалось записать в историю:', historyError);
+    }
+    
+    // 3. Обновляем локальное состояние - удаляем из выходного кармана
+    setMaterials(prev => ({
+      loading: prev.loading,
+      output: prev.output.filter(m => m.id !== selectedPipe.id),
+      defect: prev.defect
+    }));
+    
+    // 4. Снимаем выделение
+    setSelectedPipe(null);
+    
+    setSnackbar({
+      open: true,
+      message: `Материал "${selectedPipe.name}" перемещен на склад готовой продукции`,
+      severity: 'success'
+    });
+    
+  } catch (error) {
+    console.error('Ошибка перемещения на склад готовой продукции:', error);
+    setSnackbar({
+      open: true,
+      message: `Ошибка: ${error.message}`,
+      severity: 'error'
+    });
+  }
+};
+
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Заголовок */}
@@ -1340,9 +1520,6 @@ const handleMoveToDefectFromOutput = async (material) => {
         
         <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ flex: 1 }}>
           {sectionDisplayName.toUpperCase()}
-          <Typography variant="caption" display="block" color="text.secondary">
-            Unit ID: {currentUnitId} | Output Unit ID: {outputUnitId}
-          </Typography>
         </Typography>
         
         <Button 
@@ -1533,39 +1710,75 @@ const handleMoveToDefectFromOutput = async (material) => {
         ))
       )}
     </Grid>
-    
-    {/* Кнопки управления для выходного кармана */}
-    <Box sx={{ display: 'flex', gap: 2 }}>
-  <Button 
-    variant="contained" 
-    color="success"
-    startIcon={<ArrowForwardIcon />}
-    onClick={() => {
-      if (!selectedPipe) {
-        setSnackbar({
-          open: true,
-          message: 'Выберите материал для перемещения',
-          severity: 'warning'
-        });
-        return;
-      }
-      // Проверяем, что выбранный материал в выходном кармане
-      const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
-      if (!isInOutput) {
-        setSnackbar({
-          open: true,
-          message: 'Выбранный материал не находится в выходном кармане',
-          severity: 'warning'
-        });
-        return;
-      }
-      handleMoveToNextSection(selectedPipe);
-    }}
-    disabled={!selectedPipe || !nextSection || getSelectedMaterialLocation() !== 'output'}
-    sx={{ flex: 1 }}
-  >
-    Переместить на следующий участок
-  </Button>
+  </Paper>
+</Grid>
+
+{/* Кнопки управления для выходного кармана */}
+<Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+  {sectionConfig.finishedGoodsUnitId && (
+    <Button 
+      variant="contained" 
+      color="primary"
+      startIcon={<ArrowForwardIcon />}
+      onClick={() => {
+        if (!selectedPipe) {
+          setSnackbar({
+            open: true,
+            message: 'Выберите материал для перемещения',
+            severity: 'warning'
+          });
+          return;
+        }
+        // Проверяем, что выбранный материал в выходном кармане
+        const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
+        if (!isInOutput) {
+          setSnackbar({
+            open: true,
+            message: 'Выбранный материал не находится в выходном кармане',
+            severity: 'warning'
+          });
+          return;
+        }
+        handleMoveToFinishedGoods();
+      }}
+      disabled={!selectedPipe || getSelectedMaterialLocation() !== 'output'}
+      sx={{ flex: 1 }}
+    >
+      На склад готовой продукции
+    </Button>
+  )}
+  {nextSection && (
+    <Button 
+      variant="contained" 
+      color="success"
+      startIcon={<ArrowForwardIcon />}
+      onClick={() => {
+        if (!selectedPipe) {
+          setSnackbar({
+            open: true,
+            message: 'Выберите материал для перемещения',
+            severity: 'warning'
+          });
+          return;
+        }
+        // Проверяем, что выбранный материал в выходном кармане
+        const isInOutput = materials.output.some(m => m.id === selectedPipe.id);
+        if (!isInOutput) {
+          setSnackbar({
+            open: true,
+            message: 'Выбранный материал не находится в выходном кармане',
+            severity: 'warning'
+          });
+          return;
+        }
+        handleMoveToNextSection(selectedPipe);
+      }}
+      disabled={!selectedPipe || !nextSection || getSelectedMaterialLocation() !== 'output'}
+      sx={{ flex: 1 }}
+    >
+      Переместить на следующий участок
+    </Button>
+  )}
   <Button 
     variant="outlined" 
     color="error"
@@ -1597,8 +1810,6 @@ const handleMoveToDefectFromOutput = async (material) => {
     Переместить в брак
   </Button>
 </Box>
-  </Paper>
-</Grid>
 
             {/* КАРМАН БРАКА */}
             <Grid item xs={12}>
@@ -1628,23 +1839,25 @@ const handleMoveToDefectFromOutput = async (material) => {
                     materials.defect.map((material) => (
                       <Grid item xs={12} sm={6} md={4} key={material.id}>
                         <MaterialCard
-						  material={material}
-						  onDelete={(id) => handleDeleteMaterial('defect', id)}
-						  isSelected={selectedPipe?.id === material.id}
-						  onSelect={setSelectedPipe}
-						  sectionType="defect"						 
-						/>
+                          material={material}
+                          onDelete={(id) => handleDeleteMaterial('defect', id)}
+                          isSelected={selectedPipe?.id === material.id}
+                          onSelect={setSelectedPipe}
+                          sectionType="defect"						 
+                        />
                       </Grid>
                     ))
                   )}
                 </Grid>
                 
                 <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button variant="contained" color="error">
+                  <Button 
+                    variant="contained" 
+                    color="error"
+                    onClick={handleWriteOffToDefectWarehouse}
+                    disabled={!selectedPipe || getSelectedMaterialLocation() !== 'defect'}
+                  >
                     Списать
-                  </Button>
-                  <Button variant="outlined">
-                    На доработку
                   </Button>
                 </Box>
               </Paper>
