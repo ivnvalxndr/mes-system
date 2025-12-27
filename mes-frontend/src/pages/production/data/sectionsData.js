@@ -53,5 +53,4 @@ export const sectionTypes = {
   loading: { name: 'Загрузка', color: '#f59e0b' },
   sorting: { name: 'Сортировка', color: '#ef4444' },
   packing: { name: 'Упаковка', color: '#84cc16' },
-  nmk: { name: 'НМК', color: '#f97316' },
 };

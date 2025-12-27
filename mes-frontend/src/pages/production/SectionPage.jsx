@@ -56,24 +56,17 @@ const SECTION_MAPPING = {
     nextSection: 'sorting1'  // Следующий участок
   },
   'sorting1': { 
-    unitId: 6, 
+    unitId: 7, 
     outputUnitId: 13, 
     defectUnitId: 991, // Карман брака для сортировки
     name: 'Сортировка',
     nextSection: 'packing1'
   },
   'packing1': { 
-    unitId: 10, 
+    unitId: 9, 
     outputUnitId: 14, 
     defectUnitId: 992, // Карман брака для упаковки
     name: 'Упаковка',
-    nextSection: 'nmk1'
-  },
-  'nmk1': { 
-    unitId: 5, 
-    outputUnitId: 15, 
-    defectUnitId: 993, // Карман брака для НМК
-    name: 'НМК',
     nextSection: null  // Последний участок
   }
 };
@@ -89,18 +82,16 @@ function MaterialCard({ material, onDelete, isSelected, onSelect }) {
   const getSectionName = (unitId) => {
     const sections = {
       3: 'Загрузка труб',
-      6: 'Сортировка',
-      10: 'Упаковка',
-      5: 'НМК',
+      7: 'Сортировка',
+      9: 'Упаковка',
       12: 'Выходной карман (Загрузка)',
       13: 'Выходной карман (Сортировка)',
       14: 'Выходной карман (Упаковка)',
-      15: 'Выходной карман (НМК)',
       11: 'Общий склад',
+      19: 'Склад брака',
       990: 'Брак (Загрузка)',
       991: 'Брак (Сортировка)',
-      992: 'Брак (Упаковка)',
-      993: 'Брак (НМК)'
+      992: 'Брак (Упаковка)'
     };
     return sections[unitId] || `Участок #${unitId}`;
   };
@@ -935,7 +926,7 @@ const getSelectedMaterialLocation = () => {
         await logMaterialStep(
           material,
           'Registration',
-          'Общий склад',
+          'Общий склад (Unit 11)',
           `${sectionName}`,
           quantity
         );

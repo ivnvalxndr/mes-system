@@ -28,19 +28,28 @@ function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [productionOpen, setProductionOpen] = useState(false);
+  const [warehousesOpen, setWarehousesOpen] = useState(false);
 
   // Простой список участков
   const productionSections = [
     { id: 'loading1', name: 'Загрузка труб' },
     { id: 'sorting1', name: 'Сортировка' },
     { id: 'packing1', name: 'Упаковка' },
-    { id: 'nmk1', name: 'НМК' },
   ];
 
-  // Автоматически открываем меню если на странице производства
+  // Список складов
+  const warehouses = [
+    { id: 'general', name: 'Общий склад', unitId: 11 },
+    { id: 'defect', name: 'Склад брака', unitId: 14 },
+  ];
+
+  // Автоматически открываем меню если на странице производства или складов
   useEffect(() => {
     if (location.pathname.startsWith('/production')) {
       setProductionOpen(true);
+    }
+    if (location.pathname.startsWith('/warehouses')) {
+      setWarehousesOpen(true);
     }
   }, [location.pathname]);
 
@@ -52,7 +61,11 @@ function Sidebar() {
       icon: <ProductionIcon />,
       hasSubmenu: true,
     },
-    { text: 'Склады', icon: <WarehouseIcon />, path: '/warehouses' },
+    { 
+      text: 'Склады', 
+      icon: <WarehouseIcon />,
+      hasSubmenu: true,
+    },
     { text: 'Настройки', icon: <SettingsIcon />, path: '/settings' },
   ];
 
@@ -82,6 +95,7 @@ function Sidebar() {
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;
           const isProductionActive = location.pathname.startsWith('/production');
+          const isWarehousesActive = location.pathname.startsWith('/warehouses');
           
           // Раздел Производство с выпадающим списком
           if (item.text === 'Производство') {
@@ -132,6 +146,54 @@ function Sidebar() {
                         </ListItemButton>
                       </ListItem>
                     ))}
+                  </List>
+                </Collapse>
+              </React.Fragment>
+            );
+          }
+
+          // Раздел Склады с выпадающим списком
+          if (item.text === 'Склады') {
+            return (
+              <React.Fragment key={item.text}>
+                <ListItem disablePadding>
+                  <ListItemButton
+                    selected={isWarehousesActive}
+                    onClick={() => setWarehousesOpen(!warehousesOpen)}
+                    sx={{
+                      py: 1.5,
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={item.text} />
+                    {warehousesOpen ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+                </ListItem>
+                
+                {/* Выпадающий список складов */}
+                <Collapse in={warehousesOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {warehouses.map((warehouse) => {
+                      const currentHash = location.hash || '';
+                      const isSelected = location.pathname === '/warehouses' && 
+                        (currentHash === `#${warehouse.id}` || (warehouse.id === 'general' && (!currentHash || currentHash === '#general')));
+                      return (
+                        <ListItem key={warehouse.id} disablePadding>
+                          <ListItemButton
+                            selected={isSelected}
+                            onClick={() => navigate(`/warehouses#${warehouse.id}`)}
+                            sx={{ pl: 4, py: 1 }}
+                          >
+                            <ListItemText primary={warehouse.name} />
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
                   </List>
                 </Collapse>
               </React.Fragment>

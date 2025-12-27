@@ -39,8 +39,6 @@ function SidebarWithDropdown() {
     { id: 'sorting2', name: 'Сортировка 2' },
     { id: 'packing1', name: 'Упаковка 1' },
     { id: 'packing2', name: 'Упаковка 2' },
-    { id: 'nmk1', name: 'НМК 1' },
-    { id: 'nmk2', name: 'НМК 2' },
   ];
 
   // Автоматически открываем если на странице production
